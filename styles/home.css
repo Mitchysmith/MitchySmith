@@ -1,0 +1,209 @@
+/* ── Home / Overview ── */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.home-wide {
+  grid-column: 1 / -1;
+}
+
+/* Greeting */
+.greeting-card {
+  background: linear-gradient(135deg, var(--surface) 0%, #1a1a20 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.greeting-left h2 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.greeting-left h2 span {
+  color: var(--orange);
+}
+
+.greeting-left p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.greeting-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.greeting-meta .day-tag {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--orange);
+  background: var(--orange-glow);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.greeting-meta .weather-stub {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Stat tiles */
+.stat-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: box-shadow var(--transition), border-color var(--transition);
+}
+.stat-tile:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+
+.stat-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stat-orange .stat-value { color: var(--orange); }
+.stat-blue   .stat-value { color: var(--blue);   }
+.stat-green  .stat-value { color: var(--green);  }
+
+/* Today's priorities */
+.priorities-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.priority-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  font-size: 13px;
+  transition: background var(--transition);
+}
+
+.priority-item:hover { background: var(--surface-3); }
+
+.priority-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-high   { background: var(--orange); box-shadow: 0 0 6px var(--orange); }
+.dot-med    { background: var(--blue);   box-shadow: 0 0 6px var(--blue); }
+.dot-low    { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+
+.priority-text { flex: 1; color: var(--text); }
+.priority-badge { font-size: 10px; color: var(--text-dim); }
+
+/* Quick snapshot */
+.snapshot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13px;
+}
+.snapshot-row:last-child { border-bottom: none; }
+.snapshot-label { color: var(--text-muted); }
+.snapshot-value { font-weight: 600; color: var(--text); }
+.snapshot-value.up   { color: var(--green); }
+.snapshot-value.down { color: var(--orange); }
+
+/* Upcoming events mini list */
+.event-mini {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13px;
+}
+.event-mini:last-child { border-bottom: none; }
+
+.event-mini-date {
+  min-width: 36px;
+  text-align: center;
+  background: var(--surface-3);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.event-mini-date .day-num {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--blue);
+  line-height: 1;
+}
+.event-mini-date .day-mon {
+  display: block;
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.event-mini-info .event-title {
+  font-weight: 500;
+  color: var(--text);
+}
+.event-mini-info .event-time {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Motivation quote */
+.quote-card {
+  border-left: 3px solid var(--orange);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.quote-card cite {
+  display: block;
+  margin-top: 8px;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--text-dim);
+}
