@@ -1,0 +1,125 @@
+/* ── Perplexity Ideas ── */
+.perplexity-header-band {
+  background: linear-gradient(135deg, #1a1420 0%, #0d0d0f 60%, #1a1120 100%);
+  border: 1px solid rgba(255,119,48,0.2);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.perplexity-header-band::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255,119,48,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.perplexity-header-band h2 {
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--orange), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+
+.perplexity-header-band p {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 520px;
+}
+
+/* Ideas grid */
+.ideas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.idea-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.idea-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--orange), var(--blue));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.idea-card:hover {
+  border-color: rgba(255,255,255,0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.5);
+}
+
+.idea-card:hover::after { transform: scaleX(1); }
+
+.idea-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.idea-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.idea-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.idea-tag {
+  margin-top: auto;
+}
+
+/* Status toggle */
+.idea-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12px;
+}
+
+.idea-vote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--transition);
+  background: none;
+  border: none;
+  font-family: var(--font);
+  font-size: 12px;
+}
+.idea-vote:hover { color: var(--orange); }
+.idea-vote.voted { color: var(--orange); }
