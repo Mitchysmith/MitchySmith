@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCalendar();
   renderFinance();
   renderExercise();
+  renderMail();
   renderPerplexity();
 
   // Hide Pac-Man loader

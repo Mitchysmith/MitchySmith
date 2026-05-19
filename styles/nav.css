@@ -64,6 +64,8 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition);
+  /* allow badge to push to the right */
+  justify-content: flex-start;
   color: var(--text-muted);
   font-size: 14px;
   font-weight: 500;
