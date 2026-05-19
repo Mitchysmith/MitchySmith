@@ -46,6 +46,62 @@
   font-weight: 700;
 }
 
+/* Option tabs */
+.mail-option-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.mail-option-tab {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all var(--transition);
+  text-align: center;
+}
+.mail-option-tab:hover { color: var(--text); border-color: rgba(255,255,255,0.12); }
+.mail-option-tab.active {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--orange);
+}
+.mail-option-note {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.mail-panel { }
+.mail-panel.hidden { display: none; }
+
+.mail-option-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--orange);
+}
+
+.mail-code {
+  background: var(--surface-3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: monospace;
+  word-break: break-all;
+}
+
 /* Setup steps */
 .mail-steps {
   display: flex;
