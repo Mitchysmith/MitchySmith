@@ -1,3 +1,80 @@
+/* ── Calendar Strip ── */
+.cal-strip-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.cal-strip-icon { font-size: 18px; }
+.cal-strip-link {
+  margin-left: auto;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.cal-strip-link:hover { text-decoration: underline; }
+
+.cal-strip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.cal-strip-events {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 20px;
+  scrollbar-width: thin;
+}
+.cal-strip-events::-webkit-scrollbar { height: 4px; }
+.cal-strip-events::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+
+.cal-strip-event {
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: background var(--transition);
+}
+.cal-strip-event:hover { background: var(--surface-2); }
+
+.cse-date  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+.cse-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.cse-time  { font-size: 11px; color: var(--text-dim); }
+
+.cse-task-btn {
+  margin-top: 8px;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+  align-self: flex-start;
+}
+.cse-task-btn:hover { border-color: var(--orange); color: var(--orange); }
+
 /* ── Tasks / Monthly Whiteboard ── */
 .tasks-toolbar {
   display: flex;

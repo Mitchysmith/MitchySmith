@@ -1,15 +1,23 @@
-// ── Tasks / Monthly Whiteboard ──
+// ── Tasks – linked to Calendar ──
 let lastCompleted = null;
 let undoTimer     = null;
 let taskFilter    = 'all';
+
+const CAT_COLORS_TASK = {
+  work:'#6aadff', personal:'#ff7730', finance:'#4caf78',
+  family:'#c084fc', health:'#f472b6', social:'#facc15',
+};
 
 function renderTasks() {
   const el = document.getElementById('section-tasks');
   el.innerHTML = `
     <div class="page-header">
       <h1>Tasks</h1>
-      <p>Your monthly whiteboard — tick things off and keep moving.</p>
+      <p>Your monthly whiteboard — linked to your calendar so nothing slips.</p>
     </div>
+
+    <!-- Calendar events for today & upcoming -->
+    <div id="tasks-calendar-strip"></div>
 
     <div class="tasks-toolbar">
       <input type="text" id="task-input" placeholder="Add a new task…" />
@@ -51,7 +59,79 @@ function renderTasks() {
   `;
 
   bindTaskEvents();
+  refreshCalendarStrip();
   refreshTaskList();
+}
+
+// ── Calendar strip at top of Tasks ──
+function refreshCalendarStrip() {
+  const el = document.getElementById('tasks-calendar-strip');
+  if (!el) return;
+
+  const today     = new Date().toISOString().split('T')[0];
+  const in7days   = new Date(Date.now() + 7 * 864e5).toISOString().split('T')[0];
+
+  const events = (window.state.events || [])
+    .filter(e => e.start >= today && e.start <= in7days)
+    .sort((a,b) => a.start.localeCompare(b.start));
+
+  if (!events.length) {
+    el.innerHTML = `
+      <div class="cal-strip-empty">
+        <span class="cal-strip-icon">📅</span>
+        <span>No events in the next 7 days — use the free space below for your tasks.</span>
+        <a class="cal-strip-link" data-goto="calendar">Add to Calendar →</a>
+      </div>`;
+    el.querySelector('[data-goto]')?.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelector('[data-section="calendar"]')?.classList.add('active');
+      document.getElementById('section-calendar')?.classList.add('active');
+    });
+    return;
+  }
+
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  el.innerHTML = `
+    <div class="cal-strip-header">
+      <span class="section-title" style="margin:0">Coming Up</span>
+      <a class="cal-strip-link" data-goto="calendar">View Calendar →</a>
+    </div>
+    <div class="cal-strip-events">
+      ${events.map(e => {
+        const d   = new Date(e.start + 'T00:00:00');
+        const col = CAT_COLORS_TASK[e.category] || '#6aadff';
+        const isToday = e.start === today;
+        return `
+          <div class="cal-strip-event" style="border-left-color:${col}">
+            <div class="cse-date" style="color:${col}">
+              ${isToday ? 'Today' : `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`}
+            </div>
+            <div class="cse-title">${e.title}</div>
+            ${e.time ? `<div class="cse-time">${e.time}</div>` : ''}
+            <button class="cse-task-btn" data-title="Prepare for: ${e.title}" title="Add as task">+ Task</button>
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  el.querySelector('[data-goto]')?.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelector('[data-section="calendar"]')?.classList.add('active');
+    document.getElementById('section-calendar')?.classList.add('active');
+  });
+
+  el.querySelectorAll('.cse-task-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('task-input');
+      if (input) {
+        input.value = btn.dataset.title;
+        input.focus();
+      }
+    });
+  });
 }
 
 function bindTaskEvents() {
@@ -70,10 +150,8 @@ function bindTaskEvents() {
   });
 
   document.getElementById('completed-toggle').addEventListener('click', () => {
-    const tog = document.getElementById('completed-toggle');
-    const lst = document.getElementById('completed-list');
-    tog.classList.toggle('open');
-    lst.classList.toggle('open');
+    document.getElementById('completed-toggle').classList.toggle('open');
+    document.getElementById('completed-list').classList.toggle('open');
   });
 }
 
@@ -83,15 +161,9 @@ function addTask() {
   const text  = input.value.trim();
   if (!text) return;
 
-  const newTask = {
-    id:       Date.now(),
-    text,
-    priority: pri,
-    done:     false,
-    month:    new Date().getMonth(),
-  };
-
-  window.state.tasks.unshift(newTask);
+  window.state.tasks.unshift({
+    id: Date.now(), text, priority: pri, done: false, month: new Date().getMonth(),
+  });
   saveState();
   input.value = '';
   refreshTaskList();
@@ -102,7 +174,6 @@ function completeTask(id) {
   const task = window.state.tasks.find(t => t.id === id);
   if (!task || task.done) return;
 
-  // Shimmer animation
   const itemEl = document.querySelector(`[data-id="${id}"]`);
   if (itemEl) {
     itemEl.classList.add('completing');
@@ -112,14 +183,8 @@ function completeTask(id) {
   lastCompleted = { ...task };
   task.done = true;
   saveState();
-
-  // Show undo
   showUndo(task.text);
-
-  setTimeout(() => {
-    refreshTaskList();
-    refreshHome();
-  }, 300);
+  setTimeout(() => { refreshTaskList(); refreshHome(); }, 300);
 }
 
 function showUndo(text) {
@@ -141,8 +206,7 @@ function undoComplete() {
   if (task) task.done = false;
   saveState();
   clearTimeout(undoTimer);
-  const area = document.getElementById('undo-area');
-  if (area) area.innerHTML = '';
+  document.getElementById('undo-area').innerHTML = '';
   lastCompleted = null;
   refreshTaskList();
   refreshHome();
@@ -156,11 +220,11 @@ function deleteTask(id) {
 }
 
 function refreshTaskList() {
-  const pending   = window.state.tasks.filter(t => !t.done);
-  const done      = window.state.tasks.filter(t => t.done);
-  const filtered  = taskFilter === 'all' ? pending : pending.filter(t => t.priority === taskFilter);
-  const total     = window.state.tasks.length;
-  const pct       = total ? Math.round((done.length / total) * 100) : 0;
+  const pending  = window.state.tasks.filter(t => !t.done);
+  const done     = window.state.tasks.filter(t => t.done);
+  const filtered = taskFilter === 'all' ? pending : pending.filter(t => t.priority === taskFilter);
+  const total    = window.state.tasks.length;
+  const pct      = total ? Math.round((done.length / total) * 100) : 0;
 
   const pctEl = document.getElementById('tasks-pct');
   const barEl = document.getElementById('tasks-bar');
@@ -178,8 +242,8 @@ function refreshTaskList() {
     });
   }
 
-  const doneEl    = document.getElementById('completed-list');
-  const countEl   = document.getElementById('completed-count');
+  const doneEl  = document.getElementById('completed-list');
+  const countEl = document.getElementById('completed-count');
   if (countEl) countEl.textContent = done.length;
   if (doneEl) {
     doneEl.innerHTML = done.map(t => taskHtml(t, true)).join('');
