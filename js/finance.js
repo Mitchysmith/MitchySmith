@@ -80,6 +80,16 @@ function renderFinance() {
         </div>
         <div class="form-row">
           <div class="form-group"><label>Current Savings ($)</label><input type="number" id="f-savings" value="${f.savings||0}" /></div>
+          <div class="form-group"><label>Current Investments ($)</label><input type="number" id="f-investments" placeholder="e.g. shares, ETFs, super" value="${f.investments||''}" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Expected Annual Return on Investments (%)</label>
+            <input type="number" id="f-roi" step="0.1" min="0" max="50" placeholder="5.5" value="${f.roiRate ?? 5.5}" />
+          </div>
+        </div>
+        <div class="fin-roi-note" id="roi-note">
+          &#128200; At <strong>${f.roiRate ?? 5.5}% per year</strong>, your $${(f.investments||0).toLocaleString()} in investments adds <strong>$${Math.round(((f.investments||0) * (f.roiRate ?? 5.5) / 100) / 12).toLocaleString()}/month</strong> towards your goal.
         </div>
         <button class="btn btn-primary" id="save-setup-btn">Save & Update Goal</button>
       </div>
@@ -133,11 +143,13 @@ function bindFinanceEvents() {
 
 function saveSetup() {
   const f = window.state.finance;
-  f.goalName = document.getElementById('f-goalname').value.trim() || 'My Savings Goal';
-  f.target   = +document.getElementById('f-target').value  || 0;
-  f.income   = +document.getElementById('f-income').value  || 0;
-  f.expenses = +document.getElementById('f-expenses').value || 0;
-  f.savings  = +document.getElementById('f-savings').value  || 0;
+  f.goalName    = document.getElementById('f-goalname').value.trim() || 'My Savings Goal';
+  f.target      = +document.getElementById('f-target').value      || 0;
+  f.income      = +document.getElementById('f-income').value      || 0;
+  f.expenses    = +document.getElementById('f-expenses').value    || 0;
+  f.savings     = +document.getElementById('f-savings').value     || 0;
+  f.investments = +document.getElementById('f-investments').value || 0;
+  f.roiRate     = +document.getElementById('f-roi').value ?? 5.5;
   saveState();
 
   const btn = document.getElementById('save-setup-btn');
@@ -152,15 +164,21 @@ function renderSavingsGoal() {
   if (!el) return;
   const f = window.state.finance;
 
-  const target   = f.target   || 0;
-  const current  = f.savings  || 0;
-  const income   = f.income   || 0;
-  const expenses = f.expenses || 0;
-  const surplus  = Math.max(0, income - expenses);
-  const name     = f.goalName || 'My Savings Goal';
-  const remaining = Math.max(0, target - current);
-  const pct      = target ? Math.min(100, Math.round(current / target * 100)) : 0;
-  const monthsLeft = surplus > 0 ? Math.ceil(remaining / surplus) : null;
+  const target      = f.target      || 0;
+  const current     = f.savings     || 0;
+  const investments = f.investments || 0;
+  const income      = f.income      || 0;
+  const expenses    = f.expenses    || 0;
+  const surplus     = Math.max(0, income - expenses);
+  const name        = f.goalName    || 'My Savings Goal';
+  const remaining   = Math.max(0, target - current);
+  const pct         = target ? Math.min(100, Math.round(current / target * 100)) : 0;
+
+  // Variable ROI rate (default 5.5%) spread across 12 months
+  const ROI_RATE            = (f.roiRate ?? 5.5) / 100;
+  const monthlyInvestReturn = Math.round((investments * ROI_RATE) / 12);
+  const totalMonthly        = surplus + monthlyInvestReturn;
+  const monthsLeft          = totalMonthly > 0 ? Math.ceil(remaining / totalMonthly) : null;
 
   // If not set up yet
   if (!target) {
@@ -244,14 +262,30 @@ function renderSavingsGoal() {
           <div class="gh-stat-lbl">To Go</div>
         </div>
         <div class="gh-stat">
-          <div class="gh-stat-val" style="color:var(--blue)">$${surplus.toLocaleString()}</div>
-          <div class="gh-stat-lbl">Monthly Surplus</div>
+          <div class="gh-stat-val" style="color:var(--blue)">$${totalMonthly.toLocaleString()}</div>
+          <div class="gh-stat-lbl">Monthly Contribution</div>
         </div>
         <div class="gh-stat">
           <div class="gh-stat-val" style="color:var(--orange); font-size:13px">${timeStr}</div>
           <div class="gh-stat-lbl">Est. Timeline</div>
         </div>
       </div>
+
+      ${investments > 0 ? `
+      <div class="goal-roi-breakdown">
+        <div class="roi-row">
+          <span>💰 Monthly surplus</span>
+          <span>$${surplus.toLocaleString()}</span>
+        </div>
+        <div class="roi-row">
+          <span>📈 Investment return (${(ROI_RATE * 100).toFixed(1)}% p.a. on $${investments.toLocaleString()})</span>
+          <span style="color:var(--green)">+$${monthlyInvestReturn.toLocaleString()}/mo</span>
+        </div>
+        <div class="roi-row roi-total">
+          <span>Total towards goal each month</span>
+          <span style="color:var(--green)">$${totalMonthly.toLocaleString()}</span>
+        </div>
+      </div>` : ''}
     </div>
 
     <!-- Milestones -->
@@ -264,7 +298,7 @@ function renderSavingsGoal() {
       <div class="update-input-row">
         <div class="form-group">
           <label>Amount Actually Saved ($)</label>
-          <input type="number" id="update-amount" placeholder="${surplus}" />
+          <input type="number" id="update-amount" placeholder="${totalMonthly}" />
         </div>
         <div class="form-group">
           <label>Note (optional)</label>
@@ -301,9 +335,11 @@ function logMonthlyUpdate() {
   const note     = document.getElementById('update-note').value.trim();
   if (!saved && saved !== 0) return;
 
-  const f        = window.state.finance;
-  const surplus  = Math.max(0, (f.income || 0) - (f.expenses || 0));
-  const prevPct  = f.target ? Math.round((f.savings || 0) / f.target * 100) : 0;
+  const f              = window.state.finance;
+  const surplus        = Math.max(0, (f.income || 0) - (f.expenses || 0));
+  const monthlyReturn  = Math.round(((f.investments || 0) * ((f.roiRate ?? 5.5) / 100)) / 12);
+  const totalMonthly   = surplus + monthlyReturn;
+  const prevPct        = f.target ? Math.round((f.savings || 0) / f.target * 100) : 0;
 
   // Update total savings
   f.savings = (f.savings || 0) + saved;
@@ -315,7 +351,7 @@ function logMonthlyUpdate() {
   f.history.push({
     month:    monthStr,
     saved,
-    expected: surplus,
+    expected: totalMonthly,
     note,
   });
 

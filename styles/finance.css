@@ -103,6 +103,44 @@
 .gh-stat-val { font-size: 17px; font-weight: 700; }
 .gh-stat-lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.7px; margin-top: 3px; }
 
+/* ROI breakdown strip */
+.goal-roi-breakdown {
+  margin-top: 14px;
+  background: var(--surface-2);
+  border: 1px solid rgba(76,175,120,0.2);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.roi-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.roi-total {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+/* ROI note in setup */
+.fin-roi-note {
+  background: var(--green-glow);
+  border: 1px solid rgba(76,175,120,0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
 /* Milestone track */
 .milestones {
   display: flex;
