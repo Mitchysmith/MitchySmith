@@ -1,14 +1,27 @@
-// ── Finance ──
+// ── Finance – Savings Goal Tracker ──
+
 const STAMP_DUTY = {
-  NSW: { thresholds:[0,16000,35000,91000,160000,1100000,3000000], rates:[0.0125,0.015,0.0175,0.035,0.045,0.055,0.07], fhbExempt:800000 },
-  VIC: { thresholds:[0,25000,130000,960000,2000000], rates:[0.014,0.024,0.06,0.055,0.065], fhbExempt:600000 },
-  QLD: { thresholds:[0,5000,75000,540000,1000000], rates:[0,0.015,0.035,0.0425,0.0575], fhbExempt:500000 },
-  WA:  { thresholds:[0,120000,150000,360000,725000], rates:[0.019,0.0285,0.03,0.0425,0.0515], fhbExempt:430000 },
-  SA:  { thresholds:[0,12000,30000,50000,100000,200000,250000,300000,500000], rates:[0.01,0.02,0.03,0.035,0.04,0.045,0.05,0.055,0.057], fhbExempt:650000 },
-  ACT: { thresholds:[0,200000,300000,500000,750000,1000000,1455000], rates:[0.002,0.0392,0.0414,0.0559,0.0596,0.0638,0.0694], fhbExempt:0 },
-  TAS: { thresholds:[0,3000,25000,75000,200000,375000,725000], rates:[0.01875,0.02,0.025,0.03,0.035,0.04,0.045], fhbExempt:600000 },
-  NT:  { thresholds:[0,525000,3000000], rates:[0.0549,0.059,0.0645], fhbExempt:650000 },
+  NSW: { thresholds:[0,16000,35000,91000,160000,1100000,3000000], rates:[0.0125,0.015,0.0175,0.035,0.045,0.055,0.07] },
+  VIC: { thresholds:[0,25000,130000,960000,2000000], rates:[0.014,0.024,0.06,0.055,0.065] },
+  QLD: { thresholds:[0,5000,75000,540000,1000000], rates:[0,0.015,0.035,0.0425,0.0575] },
+  WA:  { thresholds:[0,120000,150000,360000,725000], rates:[0.019,0.0285,0.03,0.0425,0.0515] },
+  SA:  { thresholds:[0,12000,30000,50000,100000,200000,250000,300000,500000], rates:[0.01,0.02,0.03,0.035,0.04,0.045,0.05,0.055,0.057] },
+  ACT: { thresholds:[0,200000,300000,500000,750000,1000000,1455000], rates:[0.002,0.0392,0.0414,0.0559,0.0596,0.0638,0.0694] },
+  TAS: { thresholds:[0,3000,25000,75000,200000,375000,725000], rates:[0.01875,0.02,0.025,0.03,0.035,0.04,0.045] },
+  NT:  { thresholds:[0,525000,3000000], rates:[0.0549,0.059,0.0645] },
 };
+
+const CELEBRATE_MSGS = [
+  { title: '🎉 Absolutely smashed it!', msg: 'You saved more than planned this month. That\'s the compounding magic starting to work. Keep this up and you\'ll hit your goal ahead of schedule.' },
+  { title: '🚀 Legend behaviour!', msg: 'You\'re ahead of target — your future self is doing a happy dance right now. One month like this brings the finish line noticeably closer.' },
+  { title: '💪 Killing it!', msg: 'More saved than expected. Every extra dollar is working for you. This is exactly how goals get smashed early.' },
+];
+
+const SHAME_MSGS = [
+  { title: '😬 Oof. That\'s a bit rough.', msg: 'You came in under target this month. No judgement — but maybe check what slipped. One quiet month is fine; a pattern is not.' },
+  { title: '🫠 Your savings goal is not impressed.', msg: 'Less than planned went in this month. The goal hasn\'t changed — just the timeline has stretched. Time to tighten up next month.' },
+  { title: '😅 Well… at least you tracked it.', msg: 'Under target this month. Awareness is step one. Step two is doing better next month. You\'ve got this — just requires a bit more discipline.' },
+];
 
 function calcStampDuty(price, state) {
   const sd = STAMP_DUTY[state];
@@ -35,70 +48,41 @@ function calcRepayment(principal, annualRate, years) {
 
 function renderFinance() {
   const el = document.getElementById('section-finance');
-  const f  = window.state.finance || {};
+  if (!window.state.finance) window.state.finance = {};
+  const f = window.state.finance;
 
   el.innerHTML = `
     <div class="page-header">
       <h1>Finance</h1>
-      <p>Clarity on your money — income, goals, and property planning.</p>
+      <p>Your savings goal, progress, and property planning in one place.</p>
     </div>
 
     <div class="finance-tabs">
-      <div class="fin-tab active" data-fin="overview">Overview</div>
-      <div class="fin-tab" data-fin="goals">Goals</div>
+      <div class="fin-tab active" data-fin="savings">Savings Goal</div>
+      <div class="fin-tab" data-fin="setup">Setup</div>
       <div class="fin-tab" data-fin="property">Property</div>
-      <div class="fin-tab" data-fin="purchases">Purchases</div>
     </div>
 
-    <!-- Overview panel -->
-    <div class="fin-panel active" id="fin-overview">
-      <div class="fin-summary">
-        <div class="fin-stat">
-          <div class="fin-stat-label">Monthly Income</div>
-          <div class="fin-stat-value income" id="disp-income">$${(f.income||0).toLocaleString()}</div>
-        </div>
-        <div class="fin-stat">
-          <div class="fin-stat-label">Monthly Expenses</div>
-          <div class="fin-stat-value expense" id="disp-expense">$${(f.expenses||0).toLocaleString()}</div>
-        </div>
-        <div class="fin-stat">
-          <div class="fin-stat-label">Investments</div>
-          <div class="fin-stat-value neutral" id="disp-invest">$${(f.investments||0).toLocaleString()}</div>
-        </div>
-        <div class="fin-stat">
-          <div class="fin-stat-label">Savings</div>
-          <div class="fin-stat-value neutral" id="disp-savings">$${(f.savings||0).toLocaleString()}</div>
-        </div>
-      </div>
+    <!-- Savings Goal panel -->
+    <div class="fin-panel active" id="fin-savings"></div>
 
+    <!-- Setup panel -->
+    <div class="fin-panel" id="fin-setup">
       <div class="card">
-        <div class="section-title">Update Figures</div>
+        <div class="section-title">Your Numbers</div>
         <div class="form-row">
-          <div class="form-group"><label>Monthly Income ($)</label><input type="number" id="f-income" value="${f.income||0}" /></div>
-          <div class="form-group"><label>Monthly Expenses ($)</label><input type="number" id="f-expenses" value="${f.expenses||0}" /></div>
+          <div class="form-group"><label>Goal Name</label><input type="text" id="f-goalname" placeholder="e.g. House Deposit" value="${f.goalName||''}" /></div>
+          <div class="form-group"><label>Savings Target ($)</label><input type="number" id="f-target" placeholder="100000" value="${f.target||''}" /></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Total Savings ($)</label><input type="number" id="f-savings" value="${f.savings||0}" /></div>
-          <div class="form-group"><label>Total Investments ($)</label><input type="number" id="f-invest" value="${f.investments||0}" /></div>
+          <div class="form-group"><label>Monthly Take-Home Income ($)</label><input type="number" id="f-income" value="${f.income||''}" /></div>
+          <div class="form-group"><label>Monthly Outgoings ($)</label><input type="number" id="f-expenses" value="${f.expenses||''}" /></div>
         </div>
-        <button class="btn btn-primary" id="save-finance-btn">Save</button>
+        <div class="form-row">
+          <div class="form-group"><label>Current Savings ($)</label><input type="number" id="f-savings" value="${f.savings||0}" /></div>
+        </div>
+        <button class="btn btn-primary" id="save-setup-btn">Save & Update Goal</button>
       </div>
-    </div>
-
-    <!-- Goals panel -->
-    <div class="fin-panel" id="fin-goals">
-      <div class="card" style="margin-bottom:16px">
-        <div class="section-title">Add Savings Goal</div>
-        <div class="form-row">
-          <div class="form-group"><label>Goal Name</label><input type="text" id="goal-name" placeholder="e.g. House Deposit" /></div>
-          <div class="form-group"><label>Target Amount ($)</label><input type="number" id="goal-target" placeholder="100000" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Current Amount ($)</label><input type="number" id="goal-current" placeholder="0" /></div>
-        </div>
-        <button class="btn btn-primary" id="add-goal-btn">Add Goal</button>
-      </div>
-      <div id="goals-list"></div>
     </div>
 
     <!-- Property panel -->
@@ -111,48 +95,29 @@ function renderFinance() {
         </div>
         <div class="form-row-3">
           <div class="form-group"><label>Interest Rate (%)</label><input type="number" id="prop-rate" value="6.2" step="0.1" /></div>
-          <div class="form-group"><label>Loan Term (years)</label><input type="number" id="prop-term" value="30" /></div>
+          <div class="form-group"><label>Loan Term (yrs)</label><input type="number" id="prop-term" value="30" /></div>
           <div class="form-group"><label>State</label>
-            <select id="prop-state">
-              ${Object.keys(STAMP_DUTY).map(s => `<option value="${s}">${s}</option>`).join('')}
-            </select>
+            <select id="prop-state">${Object.keys(STAMP_DUTY).map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Rental Income / month ($)</label><input type="number" id="prop-rent" value="0" placeholder="Optional" /></div>
-          <div class="form-group"><label>Other Monthly Income ($)</label><input type="number" id="prop-other-income" value="0" placeholder="Optional" /></div>
+          <div class="form-group"><label>Rental Income / mo ($)</label><input type="number" id="prop-rent" value="0" /></div>
+          <div class="form-group"><label>Gross Annual Income ($)</label><input type="number" id="prop-annual-income" placeholder="For serviceability" /></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Gross Annual Income ($)</label><input type="number" id="prop-annual-income" placeholder="For serviceability" /></div>
-          <div class="form-group"><label>Other Monthly Loan Repayments ($)</label><input type="number" id="prop-other-loans" value="0" /></div>
+          <div class="form-group"><label>Other Loan Repayments / mo ($)</label><input type="number" id="prop-other-loans" value="0" /></div>
         </div>
         <button class="btn btn-primary" id="calc-prop-btn">Calculate</button>
-
         <div id="prop-result"></div>
       </div>
-    </div>
-
-    <!-- Purchases panel -->
-    <div class="fin-panel" id="fin-purchases">
-      <div class="card" style="margin-bottom:16px">
-        <div class="section-title">Add Purchase Goal</div>
-        <div class="form-row">
-          <div class="form-group"><label>Item</label><input type="text" id="pur-name" placeholder="e.g. New Car" /></div>
-          <div class="form-group"><label>Estimated Cost ($)</label><input type="number" id="pur-cost" /></div>
-        </div>
-        <button class="btn btn-primary" id="add-pur-btn">Add</button>
-      </div>
-      <div id="purchases-list"></div>
     </div>
   `;
 
   bindFinanceEvents();
-  renderGoals();
-  renderPurchases();
+  renderSavingsGoal();
 }
 
 function bindFinanceEvents() {
-  // Tab switching
   document.querySelectorAll('.fin-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.fin-tab').forEach(t => t.classList.remove('active'));
@@ -162,109 +127,296 @@ function bindFinanceEvents() {
     });
   });
 
-  document.getElementById('save-finance-btn').addEventListener('click', saveFinanceOverview);
-  document.getElementById('add-goal-btn').addEventListener('click', addGoal);
+  document.getElementById('save-setup-btn').addEventListener('click', saveSetup);
   document.getElementById('calc-prop-btn').addEventListener('click', calcProperty);
-  document.getElementById('add-pur-btn').addEventListener('click', addPurchase);
 }
 
-function saveFinanceOverview() {
-  window.state.finance.income      = +document.getElementById('f-income').value   || 0;
-  window.state.finance.expenses    = +document.getElementById('f-expenses').value  || 0;
-  window.state.finance.savings     = +document.getElementById('f-savings').value   || 0;
-  window.state.finance.investments = +document.getElementById('f-invest').value    || 0;
+function saveSetup() {
+  const f = window.state.finance;
+  f.goalName = document.getElementById('f-goalname').value.trim() || 'My Savings Goal';
+  f.target   = +document.getElementById('f-target').value  || 0;
+  f.income   = +document.getElementById('f-income').value  || 0;
+  f.expenses = +document.getElementById('f-expenses').value || 0;
+  f.savings  = +document.getElementById('f-savings').value  || 0;
   saveState();
 
-  document.getElementById('disp-income').textContent  = '$' + window.state.finance.income.toLocaleString();
-  document.getElementById('disp-expense').textContent = '$' + window.state.finance.expenses.toLocaleString();
-  document.getElementById('disp-invest').textContent  = '$' + window.state.finance.investments.toLocaleString();
-  document.getElementById('disp-savings').textContent = '$' + window.state.finance.savings.toLocaleString();
-
-  const btn = document.getElementById('save-finance-btn');
+  const btn = document.getElementById('save-setup-btn');
   btn.textContent = 'Saved ✓'; btn.style.background = 'var(--green)';
-  setTimeout(() => { btn.textContent = 'Save'; btn.style.background = ''; }, 2000);
+  setTimeout(() => { btn.textContent = 'Save & Update Goal'; btn.style.background = ''; }, 2000);
+
+  renderSavingsGoal();
 }
 
-function addGoal() {
-  const name    = document.getElementById('goal-name').value.trim();
-  const target  = +document.getElementById('goal-target').value || 0;
-  const current = +document.getElementById('goal-current').value || 0;
-  if (!name || !target) return;
-
-  if (!window.state.finance.savingsGoals) window.state.finance.savingsGoals = [];
-  window.state.finance.savingsGoals.push({ id: Date.now(), name, target, current });
-  saveState();
-  document.getElementById('goal-name').value = '';
-  document.getElementById('goal-target').value = '';
-  document.getElementById('goal-current').value = '';
-  renderGoals();
-}
-
-function renderGoals() {
-  const el = document.getElementById('goals-list');
+function renderSavingsGoal() {
+  const el = document.getElementById('fin-savings');
   if (!el) return;
-  const goals = window.state.finance.savingsGoals || [];
-  if (!goals.length) { el.innerHTML = `<p class="text-muted text-sm">No goals yet — add one above.</p>`; return; }
+  const f = window.state.finance;
 
-  el.innerHTML = goals.map(g => {
-    const pct = Math.min(100, Math.round((g.current / g.target) * 100));
-    return `
-      <div class="goal-item">
-        <div class="goal-header">
-          <span class="goal-name">${g.name}</span>
-          <span class="goal-pct">${pct}%</span>
-        </div>
-        <div class="progress-track"><div class="progress-fill progress-green" style="width:${pct}%"></div></div>
-        <div class="goal-sub">$${g.current.toLocaleString()} of $${g.target.toLocaleString()} saved</div>
+  const target   = f.target   || 0;
+  const current  = f.savings  || 0;
+  const income   = f.income   || 0;
+  const expenses = f.expenses || 0;
+  const surplus  = Math.max(0, income - expenses);
+  const name     = f.goalName || 'My Savings Goal';
+  const remaining = Math.max(0, target - current);
+  const pct      = target ? Math.min(100, Math.round(current / target * 100)) : 0;
+  const monthsLeft = surplus > 0 ? Math.ceil(remaining / surplus) : null;
+
+  // If not set up yet
+  if (!target) {
+    el.innerHTML = `
+      <div class="no-goal-state">
+        <div class="big-emoji">🎯</div>
+        <h3>Set your savings goal</h3>
+        <p>Head to the <strong>Setup</strong> tab and enter your income, outgoings, and target amount — then come back here to track your progress.</p>
+        <button class="btn btn-primary" id="goto-setup-btn">Set Up My Goal</button>
       </div>`;
-  }).join('');
+    document.getElementById('goto-setup-btn').addEventListener('click', () => {
+      document.querySelectorAll('.fin-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.fin-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('[data-fin="setup"]').classList.add('active');
+      document.getElementById('fin-setup').classList.add('active');
+    });
+    return;
+  }
+
+  const timeStr = monthsLeft
+    ? monthsLeft <= 1 ? '< 1 month away 🔥'
+      : monthsLeft < 12 ? `${monthsLeft} months away`
+      : `${(monthsLeft / 12).toFixed(1)} years away`
+    : 'Set your surplus to see';
+
+  // Milestones
+  const milestones = [
+    { pct: 25, emoji: '🌱', label: 'First step' },
+    { pct: 50, emoji: '⚡', label: 'Halfway!'  },
+    { pct: 75, emoji: '🔥', label: 'So close'  },
+    { pct: 100, emoji: '🏆', label: 'Done!'    },
+  ];
+
+  const milestonesHtml = milestones.map(m => `
+    <div class="milestone ${pct >= m.pct ? 'reached' : ''}">
+      <span class="milestone-emoji">${m.emoji}</span>
+      <div class="milestone-pct">${m.pct}%</div>
+      <div class="milestone-lbl">${m.label}</div>
+    </div>`).join('');
+
+  const history = f.history || [];
+  const historyHtml = history.length
+    ? history.slice().reverse().map(h => {
+        const diff   = h.saved - h.expected;
+        const cls    = diff > 0 ? 'above' : diff < 0 ? 'below' : 'exact';
+        const prefix = diff > 0 ? '+' : '';
+        return `
+          <div class="history-item ${cls}">
+            <div>
+              <div style="font-weight:500">${h.note || h.month}</div>
+              <div class="history-meta">${h.month} · Expected $${h.expected.toLocaleString()}</div>
+            </div>
+            <div>
+              <div class="history-amount ${cls}">$${h.saved.toLocaleString()}</div>
+              <div class="history-meta" style="text-align:right">${prefix}$${Math.abs(diff).toLocaleString()} vs plan</div>
+            </div>
+          </div>`;
+      }).join('')
+    : `<p class="text-muted text-sm">No updates yet — log your first month below.</p>`;
+
+  el.innerHTML = `
+    <!-- Hero progress card -->
+    <div class="goal-hero">
+      <div class="goal-hero-top">
+        <div>
+          <div class="goal-hero-name">${name}</div>
+          <div class="goal-hero-target">Target: $${target.toLocaleString()}</div>
+        </div>
+        <div class="goal-hero-pct">${pct}%</div>
+      </div>
+      <div class="goal-big-bar">
+        <div class="goal-big-fill" id="goal-fill" style="width:0%"></div>
+      </div>
+      <div class="goal-hero-stats">
+        <div class="gh-stat">
+          <div class="gh-stat-val" style="color:var(--green)">$${current.toLocaleString()}</div>
+          <div class="gh-stat-lbl">Saved</div>
+        </div>
+        <div class="gh-stat">
+          <div class="gh-stat-val" style="color:var(--text-muted)">$${remaining.toLocaleString()}</div>
+          <div class="gh-stat-lbl">To Go</div>
+        </div>
+        <div class="gh-stat">
+          <div class="gh-stat-val" style="color:var(--blue)">$${surplus.toLocaleString()}</div>
+          <div class="gh-stat-lbl">Monthly Surplus</div>
+        </div>
+        <div class="gh-stat">
+          <div class="gh-stat-val" style="color:var(--orange); font-size:13px">${timeStr}</div>
+          <div class="gh-stat-lbl">Est. Timeline</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Milestones -->
+    <div class="milestones">${milestonesHtml}</div>
+
+    <!-- Monthly update -->
+    <div class="update-card">
+      <h3>Log This Month</h3>
+      <p>Enter what you actually saved this month — be honest. We'll celebrate the wins and call out the shortfalls.</p>
+      <div class="update-input-row">
+        <div class="form-group">
+          <label>Amount Actually Saved ($)</label>
+          <input type="number" id="update-amount" placeholder="${surplus}" />
+        </div>
+        <div class="form-group">
+          <label>Note (optional)</label>
+          <input type="text" id="update-note" placeholder="e.g. skipped takeaway all month" />
+        </div>
+        <button class="btn btn-primary" id="log-update-btn" style="flex-shrink:0;margin-bottom:0">Log It</button>
+      </div>
+      <div class="reaction-banner" id="reaction-banner"></div>
+    </div>
+
+    <!-- History -->
+    <div class="card">
+      <div class="section-title">Monthly History</div>
+      <div id="history-list">${historyHtml}</div>
+    </div>
+  `;
+
+  // Animate bar in
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const fill = document.getElementById('goal-fill');
+      if (fill) fill.style.width = pct + '%';
+    }, 100);
+  });
+
+  document.getElementById('log-update-btn').addEventListener('click', logMonthlyUpdate);
+
+  // Check milestone celebration on load
+  checkNewMilestone(pct);
+}
+
+function logMonthlyUpdate() {
+  const saved    = +document.getElementById('update-amount').value;
+  const note     = document.getElementById('update-note').value.trim();
+  if (!saved && saved !== 0) return;
+
+  const f        = window.state.finance;
+  const surplus  = Math.max(0, (f.income || 0) - (f.expenses || 0));
+  const prevPct  = f.target ? Math.round((f.savings || 0) / f.target * 100) : 0;
+
+  // Update total savings
+  f.savings = (f.savings || 0) + saved;
+  if (!f.history) f.history = [];
+
+  const now = new Date();
+  const monthStr = now.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
+
+  f.history.push({
+    month:    monthStr,
+    saved,
+    expected: surplus,
+    note,
+  });
+
+  saveState();
+
+  // Show reaction
+  const banner   = document.getElementById('reaction-banner');
+  const diff     = saved - surplus;
+  const newPct   = f.target ? Math.round(f.savings / f.target * 100) : 0;
+
+  if (diff >= 0) {
+    const msg = CELEBRATE_MSGS[Math.floor(Math.random() * CELEBRATE_MSGS.length)];
+    banner.className = 'reaction-banner celebrate';
+    banner.innerHTML = `<div class="reaction-title">${msg.title}</div><div class="reaction-msg">${msg.msg}</div>`;
+    launchConfetti();
+  } else {
+    const msg = SHAME_MSGS[Math.floor(Math.random() * SHAME_MSGS.length)];
+    banner.className = 'reaction-banner shame';
+    banner.innerHTML = `<div class="reaction-title">${msg.title}</div><div class="reaction-msg">${msg.msg}</div>`;
+  }
+
+  document.getElementById('update-amount').value = '';
+  document.getElementById('update-note').value   = '';
+
+  // Re-render goal to update stats
+  setTimeout(() => renderSavingsGoal(), 400);
+}
+
+function checkNewMilestone(pct) {
+  const f = window.state.finance;
+  const prev = f.lastMilestonePct || 0;
+  const milestones = [25, 50, 75, 100];
+  for (const m of milestones) {
+    if (pct >= m && prev < m) {
+      f.lastMilestonePct = m;
+      saveState();
+      if (m === 100) {
+        setTimeout(() => { launchConfetti(); launchConfetti(); }, 200);
+      }
+    }
+  }
+}
+
+function launchConfetti() {
+  const colours = ['#ffe000','#4caf78','#6aadff','#ff7730','#c084fc','#fff'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `
+      left: ${Math.random() * 100}vw;
+      top: ${Math.random() * -40}px;
+      background: ${colours[Math.floor(Math.random() * colours.length)]};
+      width: ${4 + Math.random() * 8}px;
+      height: ${4 + Math.random() * 8}px;
+      animation-delay: ${Math.random() * 0.8}s;
+      animation-duration: ${1.8 + Math.random() * 1.2}s;
+    `;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
 }
 
 function calcProperty() {
-  const price      = +document.getElementById('prop-price').value      || 0;
-  const depositPct = +document.getElementById('prop-deposit').value    || 20;
-  const rate       = +document.getElementById('prop-rate').value       || 6.2;
-  const term       = +document.getElementById('prop-term').value       || 30;
+  const price      = +document.getElementById('prop-price').value || 0;
+  const depositPct = +document.getElementById('prop-deposit').value || 20;
+  const rate       = +document.getElementById('prop-rate').value  || 6.2;
+  const term       = +document.getElementById('prop-term').value  || 30;
   const state      = document.getElementById('prop-state').value;
-  const rent       = +document.getElementById('prop-rent').value       || 0;
-  const otherInc   = +document.getElementById('prop-other-income').value || 0;
+  const rent       = +document.getElementById('prop-rent').value  || 0;
   const annualInc  = +document.getElementById('prop-annual-income').value || 0;
-  const otherLoans = +document.getElementById('prop-other-loans').value || 0;
+  const otherLoans = +document.getElementById('prop-other-loans').value   || 0;
 
   if (!price) { document.getElementById('prop-result').innerHTML = `<p class="text-muted text-sm mt-12">Enter a purchase price to calculate.</p>`; return; }
 
-  const deposit     = Math.round(price * depositPct / 100);
-  const loanAmt     = price - deposit;
-  const stampDuty   = calcStampDuty(price, state);
-  const conveyance  = 2000;
-  const inspection  = 600;
-  const lmi         = depositPct < 20 ? Math.round(loanAmt * 0.02) : 0;
-  const totalCash   = deposit + stampDuty + conveyance + inspection + lmi;
-  const monthly     = Math.round(calcRepayment(loanAmt, rate, term));
-  const afterRent   = Math.max(0, monthly - rent - otherInc);
+  const deposit    = Math.round(price * depositPct / 100);
+  const loanAmt    = price - deposit;
+  const stampDuty  = calcStampDuty(price, state);
+  const conveyance = 2000;
+  const inspection = 600;
+  const lmi        = depositPct < 20 ? Math.round(loanAmt * 0.02) : 0;
+  const totalCash  = deposit + stampDuty + conveyance + inspection + lmi;
+  const monthly    = Math.round(calcRepayment(loanAmt, rate, term));
+  const afterRent  = Math.max(0, monthly - rent);
 
-  // Serviceability: bank typically uses buffer rate +3%
   let serviceHtml = '';
   if (annualInc) {
-    const bufferRate = rate + 3;
-    const testRepay  = Math.round(calcRepayment(loanAmt, bufferRate, term));
-    const monthlyInc = annualInc / 12;
-    const maxRepay   = monthlyInc * 0.28;
+    const testRepay  = Math.round(calcRepayment(loanAmt, rate + 3, term));
+    const maxRepay   = (annualInc / 12) * 0.28;
     const totalOblig = testRepay + otherLoans;
     const canService = totalOblig <= maxRepay;
-
     serviceHtml = `
       <div class="service-result ${canService ? 'service-ok' : 'service-no'}">
         ${canService
-          ? `✓ Likely serviceable — estimated repayments ($${testRepay.toLocaleString()}/mo at buffer rate) are within 28% of your income ($${Math.round(maxRepay).toLocaleString()}/mo).`
-          : `✗ May be tight — total obligations at buffer rate ($${totalOblig.toLocaleString()}/mo) exceed 28% of income ($${Math.round(maxRepay).toLocaleString()}/mo). Speak to a broker.`
-        }
+          ? `✓ Likely serviceable — test repayments ($${testRepay.toLocaleString()}/mo) are within 28% of your income.`
+          : `✗ May be tight — total obligations ($${totalOblig.toLocaleString()}/mo) exceed 28% of income ($${Math.round(maxRepay).toLocaleString()}/mo). Speak to a broker.`}
       </div>`;
   }
 
   document.getElementById('prop-result').innerHTML = `
     <div class="property-result">
-      <h3>Estimate for ${state} — $${price.toLocaleString()}</h3>
+      <h3>${state} — $${price.toLocaleString()}</h3>
       <div class="result-row"><span class="result-label">Deposit (${depositPct}%)</span><span class="result-value highlight">$${deposit.toLocaleString()}</span></div>
       <div class="result-row"><span class="result-label">Loan Amount</span><span class="result-value">$${loanAmt.toLocaleString()}</span></div>
       <div class="result-row"><span class="result-label">Stamp Duty (${state})</span><span class="result-value">$${stampDuty.toLocaleString()}</span></div>
@@ -273,43 +425,8 @@ function calcProperty() {
       ${lmi ? `<div class="result-row"><span class="result-label">LMI (est. &lt;20% deposit)</span><span class="result-value">$${lmi.toLocaleString()}</span></div>` : ''}
       <div class="result-row"><span class="result-label">Total Cash Required</span><span class="result-value highlight">$${totalCash.toLocaleString()}</span></div>
       <div class="result-row"><span class="result-label">Monthly Repayment (P&I)</span><span class="result-value">$${monthly.toLocaleString()}/mo</span></div>
-      ${rent || otherInc ? `<div class="result-row"><span class="result-label">Net Cost After Rental / Other Income</span><span class="result-value green">$${afterRent.toLocaleString()}/mo</span></div>` : ''}
+      ${rent ? `<div class="result-row"><span class="result-label">Net Cost After Rent</span><span class="result-value green">$${afterRent.toLocaleString()}/mo</span></div>` : ''}
       ${serviceHtml}
-      <div class="scenario-note">
-        These are estimates only. Stamp duty concessions (e.g. first-home buyer) may apply. Always confirm with a licensed conveyancer or mortgage broker.
-      </div>
+      <div class="scenario-note">Estimates only. Stamp duty concessions may apply. Always confirm with a licensed conveyancer or mortgage broker.</div>
     </div>`;
-}
-
-function addPurchase() {
-  const name = document.getElementById('pur-name').value.trim();
-  const cost = +document.getElementById('pur-cost').value || 0;
-  if (!name) return;
-  if (!window.state.finance.purchaseGoals) window.state.finance.purchaseGoals = [];
-  window.state.finance.purchaseGoals.push({ id: Date.now(), name, cost });
-  saveState();
-  document.getElementById('pur-name').value = '';
-  document.getElementById('pur-cost').value = '';
-  renderPurchases();
-}
-
-function renderPurchases() {
-  const el = document.getElementById('purchases-list');
-  if (!el) return;
-  const items = window.state.finance.purchaseGoals || [];
-  if (!items.length) { el.innerHTML = `<p class="text-muted text-sm">No purchase goals yet.</p>`; return; }
-
-  el.innerHTML = items.map(p => `
-    <div class="purchase-item">
-      <span class="p-name">${p.name}</span>
-      <span class="p-cost">$${p.cost.toLocaleString()}</span>
-      <span class="p-del" data-id="${p.id}">✕</span>
-    </div>`).join('');
-
-  el.querySelectorAll('.p-del').forEach(btn => {
-    btn.addEventListener('click', () => {
-      window.state.finance.purchaseGoals = window.state.finance.purchaseGoals.filter(p => p.id !== +btn.dataset.id);
-      saveState(); renderPurchases();
-    });
-  });
 }
