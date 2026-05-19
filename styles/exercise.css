@@ -80,6 +80,24 @@
   color: var(--green);
 }
 
+/* Backdate row */
+.backdate-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.backdate-select {
+  flex: 1;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+.backdate-btn {
+  font-size: 12px;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
 /* Stats row */
 .ex-stats {
   display: grid;
