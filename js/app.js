@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTasks();
   renderCalendar();
   renderFinance();
-  renderCooking();
   renderExercise();
   renderPerplexity();
 
