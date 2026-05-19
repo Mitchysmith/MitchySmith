@@ -25,6 +25,12 @@ const DB = {
       work: '#6aadff', personal: '#ff7730', finance: '#4caf78',
       family: '#c084fc', health: '#f472b6', social: '#facc15',
     },
+    work: {
+      daily:      [],
+      longterm:   [],
+      onboarding: [],
+      panel:      [],
+    },
   },
 
   load() {

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderExercise();
   renderMail();
   renderPerplexity();
+  renderWork();
 
   // Hide Pac-Man loader
   setTimeout(() => {
