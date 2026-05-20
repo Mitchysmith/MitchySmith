@@ -1,74 +1,301 @@
-/* ── Work Section ── */
+/* ── Work – Project Manager ── */
 
-/* Tabs */
-.work-tabs {
+/* Page title helpers (used inline) */
+.page-title { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+.page-sub   { font-size: 14px; color: var(--text-muted); }
+
+/* ── Top tabs (Summary / Tasks) ── */
+.work-top-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 12px;
-  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
 }
-.work-tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 18px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
+.work-top-tab {
+  padding: 10px 28px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   color: var(--text-muted);
   background: none;
-  border: 1px solid transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
   transition: all var(--transition);
   font-family: var(--font);
 }
-.work-tab:hover { color: var(--text); }
-.work-tab.active {
-  background: var(--surface-2);
-  color: var(--orange);
-  border-color: var(--border);
+.work-top-tab:hover { color: var(--text); }
+.work-top-tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+
+.work-top-panel         { display: none; }
+.work-top-panel.active  { display: block; }
+
+/* ══════════════════════════════════════
+   SUMMARY TAB
+══════════════════════════════════════ */
+
+/* Stat tiles */
+.work-stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
 }
-.work-tab-count {
-  background: var(--surface-3);
+.wst {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  transition: box-shadow var(--transition);
+}
+.wst:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.35); }
+.wst-val { font-size: 34px; font-weight: 800; letter-spacing: -1px; }
+.wst-lbl { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.7px; margin-top: 4px; }
+
+/* Workload cards */
+.work-load-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.wlc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: box-shadow var(--transition);
+}
+.wlc:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.wlc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 10px;
+  border-left: 3px solid var(--border);
+  margin-bottom: 2px;
+}
+.wlc-icon  { font-size: 22px; flex-shrink: 0; }
+.wlc-name  { font-size: 13px; font-weight: 700; }
+.wlc-sub   { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+.wlc-pct   { margin-left: auto; font-size: 18px; font-weight: 800; flex-shrink: 0; }
+.wlc-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+.wlc-pill  { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+.wlc-next  {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-soft);
+  padding-top: 8px;
+  line-height: 1.5;
+}
+
+/* Table header + filters */
+.work-table-hdr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.work-filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.work-filter-btn {
+  padding: 5px 13px;
   border-radius: 20px;
-  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: all var(--transition);
+  font-family: var(--font);
+}
+.work-filter-btn:hover { color: var(--text); }
+.work-filter-btn.active { background: var(--orange-glow); color: var(--orange); border-color: var(--orange); }
+
+/* All-tasks table */
+.work-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.work-table thead th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 0 10px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.work-table thead th:first-child { padding-left: 4px; }
+.work-table tbody tr {
+  border-bottom: 1px solid var(--border-soft);
+  transition: background var(--transition);
+}
+.work-table tbody tr:hover { background: var(--surface-2); }
+.work-table tbody tr:last-child { border-bottom: none; }
+.work-table td { padding: 9px 10px; vertical-align: middle; }
+.work-table td:first-child { padding-left: 4px; }
+
+.wtr-done td { opacity: 0.4; }
+.wt-name { font-weight: 500; color: var(--text); }
+.wt-list-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-dim);
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
 }
-.work-tab.active .work-tab-count {
+.wt-dim     { color: var(--text-muted); white-space: nowrap; }
+.wt-overdue { color: #f87171; font-weight: 600; font-size: 12px; }
+.wt-soon    { color: var(--orange); font-size: 12px; }
+
+/* ══════════════════════════════════════
+   TASKS TAB
+══════════════════════════════════════ */
+
+/* Daily widget — full width */
+.work-widget-daily {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--orange);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+/* Three-column row for remaining lists */
+.work-widgets-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.work-widget {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+}
+
+/* Widget header */
+.work-widget-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.wwh-title { font-size: 14px; font-weight: 700; flex: 1; }
+
+/* Generate schedule button */
+.work-gen-btn {
+  padding: 6px 14px;
   background: var(--orange-glow);
   color: var(--orange);
+  border: 1px solid rgba(255,119,48,0.3);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.work-gen-btn:hover { background: var(--orange); color: #fff; }
+
+/* Inline plan area */
+.work-inline-plan {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 14px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.work-inline-plan.hidden { display: none; }
+
+.ip-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.ip-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--blue);
+}
+.ip-time {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue);
+  white-space: nowrap;
+  min-width: 130px;
+  font-variant-numeric: tabular-nums;
+}
+.ip-task { flex: 1; font-size: 13px; }
+.ip-break {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 6px 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+.ip-missed {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  background: var(--orange-glow);
+  border-radius: var(--radius-sm);
+  margin-top: 2px;
+}
+.ip-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 14px;
 }
 
-/* Panel */
-.work-panel  { display: none; }
-.work-panel.active { display: block; }
-
-/* Add row */
+/* Add task row */
 .work-add-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
-.work-text-input { flex: 1; min-width: 200px; }
-.work-select { width: auto; font-size: 13px; }
+.work-text-input { flex: 1; min-width: 150px; }
+.work-select     { width: auto; font-size: 13px; }
 
-/* Task items */
+/* Task list */
 .work-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 20px;
+  gap: 6px;
+  min-height: 10px;
+  margin-top: 4px;
 }
-
 .work-item {
-  background: var(--surface);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--blue);
   border-radius: var(--radius);
@@ -76,25 +303,38 @@
   transition: all var(--transition);
   animation: taskIn 0.3s ease both;
 }
-.work-item:hover { border-color: rgba(255,255,255,0.12); background: var(--surface-2); }
-.work-item.done  { opacity: 0.5; border-left-color: var(--border); }
+.work-item:hover { border-color: rgba(255,255,255,0.1); background: var(--surface-3); }
+.work-item.done  { opacity: 0.4; border-left-color: var(--border); }
 
 .work-item-main {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 13px 16px;
+  gap: 10px;
+  padding: 11px 14px;
 }
-.work-item.done .task-text {
-  text-decoration: line-through;
-  color: var(--text-muted);
+.work-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
+.work-item.done .task-text { text-decoration: line-through; color: var(--text-muted); }
 
-/* Duration badge */
+/* Deadline badge on task row */
+.work-dl-badge {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.work-dl-badge.overdue { color: #f87171; font-weight: 700; }
+.work-dl-badge.soon    { color: var(--orange); font-weight: 600; }
+
+/* Duration chip */
 .work-dur-badge {
   font-size: 10px;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 2px 7px;
   border-radius: 20px;
   background: var(--surface-3);
   color: var(--text-dim);
@@ -103,53 +343,49 @@
 }
 
 /* Comment button — highlight when notes exist */
-.task-action-btn.has-comments {
-  color: var(--blue);
-  border-color: rgba(106,173,255,0.35);
-}
+.task-action-btn.has-comments { color: var(--blue); border-color: rgba(106,173,255,0.35); }
 
 /* Comments box */
 .wcomments-box {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.35s ease, padding 0.25s ease;
-  padding: 0 16px;
-  background: var(--surface-2);
+  padding: 0 14px;
+  background: var(--surface-3);
 }
 .wcomments-box.open {
-  max-height: 420px;
-  padding: 14px 16px;
+  max-height: 440px;
+  padding: 12px 14px;
   border-top: 1px solid var(--border);
   overflow-y: auto;
 }
+.wcomment-list    { margin-bottom: 8px; display: flex; flex-direction: column; gap: 5px; }
+.wcomment-item    { background: var(--surface-2); border-radius: var(--radius-sm); padding: 7px 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.wcomment-text    { font-size: 12px; color: var(--text); line-height: 1.5; flex: 1; }
+.wcomment-ts      { font-size: 10px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+.wcomment-empty   { font-size: 11px; color: var(--text-dim); margin: 0 0 6px; }
+.wcomment-add-row { display: flex; gap: 8px; align-items: center; }
+.wcomment-input   { flex: 1; font-size: 12px; }
 
-.wcomment-list {
-  margin-bottom: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.wcomment-item {
-  background: var(--surface-3);
+/* Small button used in comment save */
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 9px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+  white-space: nowrap;
 }
-.wcomment-text  { font-size: 13px; color: var(--text); line-height: 1.5; flex: 1; }
-.wcomment-ts    { font-size: 10px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
-.wcomment-empty { font-size: 12px; color: var(--text-dim); margin: 0 0 8px; }
+.btn-sm:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
 
-.wcomment-add-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.wcomment-input { flex: 1; font-size: 13px; }
+/* ══════════════════════════════════════
+   PLAN MY DAY MODAL
+══════════════════════════════════════ */
 
-/* ── Plan My Day overlay ── */
 .work-day-plan-overlay {
   position: fixed;
   inset: 0;
@@ -171,39 +407,13 @@
   overflow-y: auto;
   padding: 28px 32px;
 }
-
-/* Modal header */
-.day-plan-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-.dp-title    { font-size: 22px; font-weight: 800; color: var(--text); }
-.dp-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-
-.dp-close-btn {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-  font-size: 14px;
-  font-family: var(--font);
-  flex-shrink: 0;
-  transition: all var(--transition);
-}
+.day-plan-header  { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.dp-title         { font-size: 22px; font-weight: 800; }
+.dp-subtitle      { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.dp-close-btn     { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 14px; font-family: var(--font); flex-shrink: 0; transition: all var(--transition); }
 .dp-close-btn:hover { color: var(--orange); border-color: var(--orange); }
 
-/* Schedule slots */
-.day-plan-schedule {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
+.day-plan-schedule { display: flex; flex-direction: column; gap: 6px; }
 .day-plan-slot {
   display: flex;
   align-items: center;
@@ -214,58 +424,17 @@
   border-left: 3px solid var(--blue);
   animation: taskIn 0.25s ease both;
 }
-.dp-time {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--blue);
-  white-space: nowrap;
-  min-width: 140px;
-  font-variant-numeric: tabular-nums;
-}
+.dp-time      { font-size: 11px; font-weight: 700; color: var(--blue); white-space: nowrap; min-width: 140px; font-variant-numeric: tabular-nums; }
 .dp-task-info { flex: 1; min-width: 0; }
-.dp-task-name { font-size: 14px; font-weight: 600; color: var(--text); display: block; }
+.dp-task-name { font-size: 14px; font-weight: 600; display: block; }
 .dp-task-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; display: block; }
 
-/* Lunch break row */
-.day-plan-break {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 9px 16px;
-  background: none;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  font-size: 13px;
-}
-.dp-break-label { color: var(--text-muted); font-size: 13px; }
+.day-plan-break   { display: flex; align-items: center; gap: 14px; padding: 9px 16px; border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 13px; }
+.day-plan-deferred { margin-top: 20px; padding: 14px 16px; background: var(--orange-glow); border: 1px solid rgba(255,119,48,0.2); border-radius: var(--radius-sm); }
+.dpd-title        { font-size: 12px; font-weight: 700; color: var(--orange); margin-bottom: 8px; }
+.dpd-item         { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; line-height: 1.5; }
+.dpd-item span    { color: var(--text-dim); }
 
-/* Deferred tasks */
-.day-plan-deferred {
-  margin-top: 20px;
-  padding: 14px 16px;
-  background: var(--orange-glow);
-  border: 1px solid rgba(255, 119, 48, 0.2);
-  border-radius: var(--radius-sm);
-}
-.dpd-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--orange);
-  margin-bottom: 8px;
-}
-.dpd-item {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-  line-height: 1.5;
-}
-.dpd-item span { color: var(--text-dim); }
-
-/* Empty state */
-.day-plan-empty {
-  text-align: center;
-  padding: 40px 20px;
-}
+.day-plan-empty   { text-align: center; padding: 40px 20px; }
 .day-plan-empty h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
 .day-plan-empty p  { font-size: 14px; color: var(--text-muted); }

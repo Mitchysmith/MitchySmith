@@ -1,127 +1,431 @@
-// ── Work – Task Manager ──
+// ── Work – Project Manager ──
 
 const WORK_LISTS = {
-  daily:      { label: 'Daily',         icon: '☀️', desc: 'Tasks to get done today' },
-  longterm:   { label: 'Long Term',     icon: '🗂️', desc: 'Projects and ongoing work items' },
-  onboarding: { label: 'Onboarding',    icon: '🚀', desc: 'Onboarding checklist items' },
-  panel:      { label: 'Panel Reviews', icon: '📋', desc: 'Client panel reviews (~45 min each)' },
+  daily:      { label: 'Daily',         icon: '☀️', color: 'var(--orange)' },
+  longterm:   { label: 'Long Term',     icon: '🗂️', color: 'var(--blue)'   },
+  onboarding: { label: 'Onboarding',    icon: '🚀', color: 'var(--green)'  },
+  panel:      { label: 'Panel Reviews', icon: '📋', color: '#c084fc'       },
 };
 
 const WORK_DURATIONS = [
-  { val: 15,  label: '15 min' },
-  { val: 30,  label: '30 min' },
-  { val: 45,  label: '45 min' },
-  { val: 60,  label: '1 hour' },
-  { val: 90,  label: '1.5 hrs' },
-  { val: 120, label: '2 hours' },
-  { val: 180, label: '3 hours' },
+  { val: 15,  label: '15m'  },
+  { val: 30,  label: '30m'  },
+  { val: 45,  label: '45m'  },
+  { val: 60,  label: '1hr'  },
+  { val: 90,  label: '1.5h' },
+  { val: 120, label: '2hr'  },
+  { val: 180, label: '3hr'  },
 ];
 
-const WORK_DAY_START_MINS = 8 * 60;   // 8:00 AM
-const WORK_DAY_TOTAL_MINS = 420;      // 7 hours
-const LUNCH_AT_MINS       = 12 * 60;  // noon
+const WORK_DAY_START_MINS = 8 * 60;
+const WORK_DAY_TOTAL_MINS = 420;
+const LUNCH_AT_MINS       = 12 * 60;
 const LUNCH_DURATION      = 30;
 
-let activeWorkList = 'daily';
+let workTopTab      = 'summary';
+let workTableFilter = 'all';
 
-// ── Render shell ──
+function initWork() {
+  if (!window.state.work) window.state.work = {};
+  Object.keys(WORK_LISTS).forEach(k => {
+    if (!window.state.work[k]) window.state.work[k] = [];
+  });
+}
+
+// ── Root render ──
 function renderWork() {
-  if (!window.state.work) {
-    window.state.work = { daily: [], longterm: [], onboarding: [], panel: [] };
-    saveState();
-  }
-
+  initWork();
   const el = document.getElementById('section-work');
   el.innerHTML = `
-    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
       <div>
-        <h1>Work</h1>
-        <p>Daily tasks, long-term projects, onboarding, and panel reviews.</p>
+        <h1 class="page-title">Work</h1>
+        <p class="page-sub">Project overview and daily planner.</p>
       </div>
       <button class="btn btn-primary" id="plan-day-btn">⚡ Plan My Day</button>
     </div>
 
-    <div class="work-tabs">
-      ${Object.entries(WORK_LISTS).map(([key, meta]) => `
-        <button class="work-tab ${key === activeWorkList ? 'active' : ''}" data-list="${key}">
-          <span>${meta.icon}</span>
-          <span>${meta.label}</span>
-          <span class="work-tab-count" id="wcount-${key}">0</span>
-        </button>`).join('')}
+    <div class="work-top-tabs">
+      <button class="work-top-tab ${workTopTab==='summary'?'active':''}" data-tab="summary">📊 Summary</button>
+      <button class="work-top-tab ${workTopTab==='tasks'?'active':''}" data-tab="tasks">✅ Tasks</button>
     </div>
 
-    ${Object.keys(WORK_LISTS).map(key => `
-      <div class="work-panel ${key === activeWorkList ? 'active' : ''}" id="work-panel-${key}">
-        <div class="work-add-row">
-          <input type="text" id="winput-${key}" placeholder="Add a task to ${WORK_LISTS[key].label}…" class="work-text-input" />
-          <select id="wpri-${key}" class="work-select">
-            <option value="high">High</option>
-            <option value="med" selected>Medium</option>
-            <option value="low">Low</option>
-          </select>
-          <select id="wdur-${key}" class="work-select">
-            ${WORK_DURATIONS.map(d =>
-              `<option value="${d.val}" ${(key === 'panel' && d.val === 45) || (key !== 'panel' && d.val === 30) ? 'selected' : ''}>${d.label}</option>`
-            ).join('')}
-          </select>
-          <button class="btn btn-primary" onclick="addWorkTask('${key}')">Add</button>
-        </div>
-        <ul class="work-list" id="wlist-${key}"></ul>
-      </div>`).join('')}
+    <div class="work-top-panel ${workTopTab==='summary'?'active':''}" id="wtp-summary"></div>
+    <div class="work-top-panel ${workTopTab==='tasks'?'active':''}"   id="wtp-tasks"></div>
 
-    <!-- Plan My Day overlay -->
     <div class="work-day-plan-overlay hidden" id="day-plan-overlay">
       <div class="work-day-plan-modal" id="day-plan-modal"></div>
-    </div>
-  `;
+    </div>`;
 
-  // Tab switching
-  el.querySelectorAll('.work-tab').forEach(btn => {
+  el.querySelectorAll('.work-top-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-      activeWorkList = btn.dataset.list;
-      el.querySelectorAll('.work-tab').forEach(b => b.classList.remove('active'));
-      el.querySelectorAll('.work-panel').forEach(p => p.classList.remove('active'));
+      workTopTab = btn.dataset.tab;
+      el.querySelectorAll('.work-top-tab').forEach(b => b.classList.remove('active'));
+      el.querySelectorAll('.work-top-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById(`work-panel-${activeWorkList}`).classList.add('active');
-    });
-  });
-
-  // Enter key to add
-  Object.keys(WORK_LISTS).forEach(key => {
-    document.getElementById(`winput-${key}`).addEventListener('keydown', e => {
-      if (e.key === 'Enter') addWorkTask(key);
+      document.getElementById(`wtp-${workTopTab}`).classList.add('active');
     });
   });
 
   document.getElementById('plan-day-btn').addEventListener('click', planMyDay);
-
   document.getElementById('day-plan-overlay').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeDayPlan();
+  });
+
+  buildSummaryPanel();
+  buildTasksPanel();
+}
+
+// ═══════════════════════════════════════════════════
+// SUMMARY TAB
+// ═══════════════════════════════════════════════════
+
+function buildSummaryPanel() {
+  const p = document.getElementById('wtp-summary');
+  p.innerHTML = `
+    <div class="work-stat-tiles" id="work-stat-tiles"></div>
+    <div class="work-load-cards" id="work-load-cards"></div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="work-table-hdr">
+        <div class="section-title" style="margin-bottom:0">All Tasks</div>
+        <div class="work-filter-row" id="work-table-filters">
+          <button class="work-filter-btn ${workTableFilter==='all'?'active':''}"     data-f="all">All</button>
+          <button class="work-filter-btn ${workTableFilter==='pending'?'active':''}" data-f="pending">Pending</button>
+          <button class="work-filter-btn ${workTableFilter==='high'?'active':''}"    data-f="high">High Priority</button>
+          <button class="work-filter-btn ${workTableFilter==='soon'?'active':''}"    data-f="soon">Due This Week</button>
+        </div>
+      </div>
+      <div id="work-all-table"></div>
+    </div>`;
+
+  p.querySelectorAll('.work-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      workTableFilter = btn.dataset.f;
+      p.querySelectorAll('.work-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      refreshSummaryTable();
+    });
+  });
+
+  refreshSummary();
+}
+
+function getAllTasks() {
+  const out = [];
+  Object.entries(WORK_LISTS).forEach(([key, meta]) => {
+    (window.state.work[key] || []).forEach(t => {
+      out.push({ ...t, listKey: key, listLabel: meta.label, listColor: meta.color, listIcon: meta.icon });
+    });
+  });
+  return out;
+}
+
+function isDueSoon(t) {
+  if (!t.deadline || t.done) return false;
+  const diff = (new Date(t.deadline) - new Date(new Date().toDateString())) / 86400000;
+  return diff >= 0 && diff <= 7;
+}
+
+function isOverdue(t) {
+  if (!t.deadline || t.done) return false;
+  return new Date(t.deadline) < new Date(new Date().toDateString());
+}
+
+function refreshSummary() {
+  refreshSummaryStats();
+  refreshWorkloadCards();
+  refreshSummaryTable();
+}
+
+function refreshSummaryStats() {
+  const el = document.getElementById('work-stat-tiles');
+  if (!el) return;
+  const all     = getAllTasks();
+  const pending = all.filter(t => !t.done);
+  const high    = pending.filter(t => t.priority === 'high').length;
+  const soon    = pending.filter(t => isDueSoon(t) || isOverdue(t)).length;
+  const done    = all.filter(t => t.done).length;
+
+  el.innerHTML = `
+    <div class="wst"><div class="wst-val">${pending.length}</div><div class="wst-lbl">Pending</div></div>
+    <div class="wst"><div class="wst-val" style="color:var(--orange)">${high}</div><div class="wst-lbl">High Priority</div></div>
+    <div class="wst"><div class="wst-val" style="color:${soon > 0 ? '#f87171' : 'var(--text)'}">${soon}</div><div class="wst-lbl">Due This Week</div></div>
+    <div class="wst"><div class="wst-val" style="color:var(--green)">${done}</div><div class="wst-lbl">Completed</div></div>`;
+}
+
+function refreshWorkloadCards() {
+  const el = document.getElementById('work-load-cards');
+  if (!el) return;
+  el.innerHTML = Object.entries(WORK_LISTS).map(([key, meta]) => {
+    const tasks   = window.state.work[key] || [];
+    const total   = tasks.length;
+    const done    = tasks.filter(t => t.done).length;
+    const pending = total - done;
+    const pct     = total > 0 ? Math.round(done / total * 100) : 0;
+    const high    = tasks.filter(t => !t.done && t.priority === 'high').length;
+    const med     = tasks.filter(t => !t.done && t.priority === 'med').length;
+    const low     = tasks.filter(t => !t.done && t.priority === 'low').length;
+    const next    = tasks.filter(t => !t.done && t.deadline)
+                         .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))[0];
+    return `
+      <div class="wlc">
+        <div class="wlc-head" style="border-left-color:${meta.color}">
+          <span class="wlc-icon">${meta.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div class="wlc-name">${meta.label}</div>
+            <div class="wlc-sub">${pending} pending · ${total} total</div>
+          </div>
+          <div class="wlc-pct" style="color:${meta.color}">${pct}%</div>
+        </div>
+        <div class="progress-track" style="height:5px;margin:10px 0 8px">
+          <div class="progress-fill" style="width:${pct}%;background:${meta.color};border-radius:99px;transition:width 0.8s ease"></div>
+        </div>
+        <div class="wlc-pills">
+          ${high ? `<span class="wlc-pill" style="background:var(--orange-glow);color:var(--orange)">${high} High</span>` : ''}
+          ${med  ? `<span class="wlc-pill" style="background:var(--blue-glow);color:var(--blue)">${med} Med</span>`       : ''}
+          ${low  ? `<span class="wlc-pill" style="background:var(--green-glow);color:var(--green)">${low} Low</span>`     : ''}
+          ${!high && !med && !low ? '<span style="font-size:11px;color:var(--text-dim)">All clear ✓</span>' : ''}
+        </div>
+        ${next ? `<div class="wlc-next">📅 ${formatDeadline(next.deadline)} — ${escWH(next.text.slice(0, 38))}${next.text.length > 38 ? '…' : ''}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function refreshSummaryTable() {
+  const el = document.getElementById('work-all-table');
+  if (!el) return;
+
+  let tasks = getAllTasks();
+  if (workTableFilter === 'pending') tasks = tasks.filter(t => !t.done);
+  if (workTableFilter === 'high')    tasks = tasks.filter(t => !t.done && t.priority === 'high');
+  if (workTableFilter === 'soon')    tasks = tasks.filter(t => !t.done && (isDueSoon(t) || isOverdue(t)));
+
+  const priOrder = { high: 0, med: 1, low: 2 };
+  tasks.sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    if (isOverdue(a) !== isOverdue(b)) return isOverdue(a) ? -1 : 1;
+    if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+    if (a.deadline) return -1;
+    if (b.deadline) return 1;
+    return (priOrder[a.priority] ?? 1) - (priOrder[b.priority] ?? 1);
+  });
+
+  if (!tasks.length) {
+    el.innerHTML = `<div class="task-list-empty">No tasks match this filter.</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="work-table">
+      <thead>
+        <tr>
+          <th style="width:34px"></th>
+          <th>Task</th>
+          <th>List</th>
+          <th>Priority</th>
+          <th>Est.</th>
+          <th>Deadline</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tasks.map(t => {
+          const priKey  = t.priority === 'high' ? 'high' : t.priority === 'med' ? 'med' : 'low';
+          const priLbl  = priKey === 'high' ? 'High' : priKey === 'med' ? 'Med' : 'Low';
+          const overdue = isOverdue(t);
+          const dur     = WORK_DURATIONS.find(d => d.val === t.duration)?.label || `${t.duration || '?'}m`;
+          const dlStr   = t.deadline ? formatDeadline(t.deadline) : '—';
+          const dlCls   = overdue ? 'wt-overdue' : isDueSoon(t) ? 'wt-soon' : '';
+          const status  = t.done    ? '<span style="color:var(--green)">Done</span>'
+                        : overdue   ? '<span style="color:#f87171">Overdue</span>'
+                        :             '<span style="color:var(--text-muted)">Pending</span>';
+          return `
+            <tr class="${t.done ? 'wtr-done' : ''}">
+              <td>
+                <div class="task-check ${t.done ? 'checked' : ''}"
+                     style="width:18px;height:18px;border-radius:5px;font-size:10px"
+                     onclick="toggleWorkDone('${t.listKey}','${t.id}')">
+                  ${t.done ? '✓' : ''}
+                </div>
+              </td>
+              <td class="wt-name">${escWH(t.text)}</td>
+              <td><span class="wt-list-badge" style="background:${t.listColor}20;color:${t.listColor}">${t.listIcon} ${t.listLabel}</span></td>
+              <td><span class="task-priority pri-${priKey}">${priLbl}</span></td>
+              <td class="wt-dim">${dur}</td>
+              <td class="${dlCls}">${dlStr}</td>
+              <td>${status}</td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function formatDeadline(dateStr) {
+  if (!dateStr) return '—';
+  const d     = new Date(dateStr + 'T00:00:00');
+  const today = new Date(new Date().toDateString());
+  const diff  = Math.round((d - today) / 86400000);
+  const fmt   = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  if (diff < 0)   return `${fmt} (${Math.abs(diff)}d overdue)`;
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff <= 7)  return `${fmt} (in ${diff}d)`;
+  return fmt;
+}
+
+// ═══════════════════════════════════════════════════
+// TASKS TAB
+// ═══════════════════════════════════════════════════
+
+function buildTasksPanel() {
+  const p = document.getElementById('wtp-tasks');
+
+  const durationOpts = key =>
+    WORK_DURATIONS.map(d =>
+      `<option value="${d.val}" ${(key === 'panel' && d.val === 45) || (key !== 'panel' && d.val === 30) ? 'selected' : ''}>${d.label}</option>`
+    ).join('');
+
+  p.innerHTML = `
+    <!-- Daily widget: full width -->
+    <div class="work-widget work-widget-daily">
+      <div class="work-widget-hdr">
+        <span class="wwh-title" style="color:var(--orange)">☀️ Daily Tasks</span>
+        <span class="work-tab-count" id="wcount-daily" style="background:var(--orange-glow);color:var(--orange)">0</span>
+        <button class="work-gen-btn" onclick="generateInlinePlan()">⚡ Generate Schedule</button>
+      </div>
+
+      <div class="work-inline-plan hidden" id="inline-plan-area"></div>
+
+      <div class="work-add-row" style="margin-top:14px">
+        <input type="text" id="winput-daily" placeholder="Add a task for today…" class="work-text-input" />
+        <select id="wpri-daily" class="work-select">
+          <option value="high">High</option>
+          <option value="med" selected>Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="wdur-daily" class="work-select">${durationOpts('daily')}</select>
+        <input type="date" id="wdl-daily" class="work-select" title="Deadline (optional)" />
+        <button class="btn btn-primary" onclick="addWorkTask('daily')">Add</button>
+      </div>
+      <ul class="work-list" id="wlist-daily"></ul>
+    </div>
+
+    <!-- Three smaller widgets in a row -->
+    <div class="work-widgets-row">
+      ${['longterm', 'onboarding', 'panel'].map(key => `
+        <div class="work-widget">
+          <div class="work-widget-hdr">
+            <span class="wwh-title" style="color:${WORK_LISTS[key].color}">${WORK_LISTS[key].icon} ${WORK_LISTS[key].label}</span>
+            <span class="work-tab-count" id="wcount-${key}">0</span>
+          </div>
+          <div class="work-add-row" style="margin-top:10px">
+            <input type="text" id="winput-${key}" placeholder="Add task…" class="work-text-input" />
+            <select id="wpri-${key}" class="work-select">
+              <option value="high">High</option>
+              <option value="med" selected>Med</option>
+              <option value="low">Low</option>
+            </select>
+            <select id="wdur-${key}" class="work-select">${durationOpts(key)}</select>
+            <input type="date" id="wdl-${key}" class="work-select" title="Deadline (optional)" />
+            <button class="btn btn-primary" onclick="addWorkTask('${key}')" style="padding:7px 12px">+</button>
+          </div>
+          <ul class="work-list" id="wlist-${key}"></ul>
+        </div>`).join('')}
+    </div>`;
+
+  Object.keys(WORK_LISTS).forEach(key => {
+    const inp = document.getElementById(`winput-${key}`);
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') addWorkTask(key); });
   });
 
   refreshAllWorkLists();
 }
 
-// ── CRUD ──
+function generateInlinePlan() {
+  const area = document.getElementById('inline-plan-area');
+  const btn  = document.querySelector('.work-gen-btn');
+  if (!area) return;
+
+  const tasks = (window.state.work.daily || []).filter(t => !t.done);
+  if (!tasks.length) {
+    area.innerHTML = `<div class="ip-empty">No undone daily tasks — add some using the form above.</div>`;
+    area.classList.remove('hidden');
+    return;
+  }
+
+  const priOrder = { high: 0, med: 1, low: 2 };
+  const sorted   = [...tasks].sort((a, b) => (priOrder[a.priority] ?? 1) - (priOrder[b.priority] ?? 1));
+
+  const end       = WORK_DAY_START_MINS + WORK_DAY_TOTAL_MINS;
+  let   cursor    = WORK_DAY_START_MINS;
+  let   lunchDone = false;
+  const slots     = [];
+  const missed    = [];
+
+  for (const t of sorted) {
+    if (!lunchDone && cursor >= LUNCH_AT_MINS) {
+      slots.push({ isBreak: true });
+      cursor    = LUNCH_AT_MINS + LUNCH_DURATION;
+      lunchDone = true;
+    }
+    if (cursor + t.duration <= end) {
+      slots.push({ ...t, start: cursor, end: cursor + t.duration });
+      cursor += t.duration;
+    } else {
+      missed.push(t);
+    }
+  }
+
+  const toTime = m => {
+    const h = Math.floor(m / 60), min = m % 60, ampm = h < 12 ? 'AM' : 'PM';
+    const hh = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${hh}:${min.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  area.innerHTML = `
+    <div class="ip-header">Schedule for ${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+    ${slots.map(s => s.isBreak
+      ? `<div class="ip-break">🍽 Lunch — ${toTime(LUNCH_AT_MINS)} to ${toTime(LUNCH_AT_MINS + LUNCH_DURATION)}</div>`
+      : `<div class="ip-slot">
+           <span class="ip-time">${toTime(s.start)} – ${toTime(s.end)}</span>
+           <span class="ip-task">${escWH(s.text)}</span>
+           <span class="task-priority pri-${s.priority === 'high' ? 'high' : s.priority === 'med' ? 'med' : 'low'}">
+             ${s.priority === 'high' ? 'High' : s.priority === 'med' ? 'Med' : 'Low'}
+           </span>
+         </div>`
+    ).join('')}
+    ${missed.length ? `<div class="ip-missed">⏭ ${missed.length} task${missed.length > 1 ? 's' : ''} won't fit today: ${missed.map(t => escWH(t.text)).join(', ')}</div>` : ''}`;
+
+  area.classList.remove('hidden');
+  if (btn) btn.textContent = '↺ Refresh';
+}
+
+// ═══════════════════════════════════════════════════
+// CRUD
+// ═══════════════════════════════════════════════════
+
 function addWorkTask(listKey) {
   const input = document.getElementById(`winput-${listKey}`);
-  const text  = input.value.trim();
+  const text  = input?.value.trim();
   if (!text) return;
 
   if (!window.state.work[listKey]) window.state.work[listKey] = [];
   window.state.work[listKey].push({
     id:       'w_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
     text,
-    priority: document.getElementById(`wpri-${listKey}`).value,
-    duration: +document.getElementById(`wdur-${listKey}`).value,
+    priority: document.getElementById(`wpri-${listKey}`)?.value || 'med',
+    duration: +(document.getElementById(`wdur-${listKey}`)?.value || 30),
+    deadline: document.getElementById(`wdl-${listKey}`)?.value || '',
     done:     false,
     comments: [],
     created:  Date.now(),
   });
   saveState();
-  input.value = '';
+  if (input) input.value = '';
   refreshWorkList(listKey);
   refreshWorkCount(listKey);
+  refreshSummary();
 }
 
 function toggleWorkDone(listKey, id) {
@@ -131,6 +435,7 @@ function toggleWorkDone(listKey, id) {
   saveState();
   refreshWorkList(listKey);
   refreshWorkCount(listKey);
+  refreshSummary();
 }
 
 function deleteWorkTask(listKey, id) {
@@ -138,39 +443,29 @@ function deleteWorkTask(listKey, id) {
   saveState();
   refreshWorkList(listKey);
   refreshWorkCount(listKey);
+  refreshSummary();
 }
 
 // ── Comments ──
 function toggleWorkComments(id) {
-  const box = document.getElementById(`wcomments-box-${id}`);
-  const btn = document.querySelector(`[data-comment-toggle="${id}"]`);
-  if (box) box.classList.toggle('open');
-  if (btn) btn.classList.toggle('open');
+  document.getElementById(`wcomments-box-${id}`)?.classList.toggle('open');
+  document.querySelector(`[data-comment-toggle="${id}"]`)?.classList.toggle('open');
 }
 
 function addWorkComment(listKey, id) {
   const input = document.getElementById(`wcomment-input-${id}`);
-  const text  = input.value.trim();
+  const text  = input?.value.trim();
   if (!text) return;
-
-  const task = (window.state.work[listKey] || []).find(t => t.id === id);
+  const task  = (window.state.work[listKey] || []).find(t => t.id === id);
   if (!task) return;
-
   if (!task.comments) task.comments = [];
   task.comments.push({ text, ts: Date.now() });
   saveState();
-  input.value = '';
-
-  // Re-render just the comment list within the open box
+  if (input) input.value = '';
   const list = document.querySelector(`#wcomments-box-${id} .wcomment-list`);
   if (list) list.innerHTML = buildCommentListHtml(task.comments);
-
-  // Update comment count badge
   const btn = document.querySelector(`[data-comment-toggle="${id}"]`);
-  if (btn) {
-    btn.textContent = `💬 ${task.comments.length}`;
-    btn.classList.add('has-comments');
-  }
+  if (btn) { btn.textContent = `💬 ${task.comments.length}`; btn.classList.add('has-comments'); }
 }
 
 function buildCommentListHtml(comments) {
@@ -183,15 +478,16 @@ function buildCommentListHtml(comments) {
 }
 
 function escWH(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ── List render ──
+// ── List refresh ──
 function refreshAllWorkLists() {
   Object.keys(WORK_LISTS).forEach(key => {
     refreshWorkList(key);
     refreshWorkCount(key);
   });
+  refreshSummary();
 }
 
 function refreshWorkCount(listKey) {
@@ -203,63 +499,71 @@ function refreshWorkCount(listKey) {
 function refreshWorkList(listKey) {
   const ul = document.getElementById(`wlist-${listKey}`);
   if (!ul) return;
-
   const tasks = window.state.work[listKey] || [];
+
   if (!tasks.length) {
-    ul.innerHTML = `<li class="task-list-empty">${WORK_LISTS[listKey].desc} — nothing here yet.</li>`;
+    ul.innerHTML = `<li class="task-list-empty">${WORK_LISTS[listKey]?.label} — nothing added yet.</li>`;
     return;
   }
 
   const priOrder = { high: 0, med: 1, low: 2 };
   const sorted   = [...tasks].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
-    return (priOrder[a.priority] || 1) - (priOrder[b.priority] || 1);
+    if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+    if (a.deadline) return -1;
+    if (b.deadline) return 1;
+    return (priOrder[a.priority] ?? 1) - (priOrder[b.priority] ?? 1);
   });
 
   ul.innerHTML = sorted.map(task => {
     const commentCount = task.comments?.length || 0;
-    const durLabel     = WORK_DURATIONS.find(d => d.val === task.duration)?.label || `${task.duration}m`;
+    const dur          = WORK_DURATIONS.find(d => d.val === task.duration)?.label || `${task.duration}m`;
     const priKey       = task.priority === 'high' ? 'high' : task.priority === 'med' ? 'med' : 'low';
-    const priLabel     = priKey === 'high' ? 'High' : priKey === 'med' ? 'Med' : 'Low';
+    const priLbl       = priKey === 'high' ? 'High' : priKey === 'med' ? 'Med' : 'Low';
+    const overdue      = isOverdue(task);
+    const dlStr        = task.deadline ? formatDeadline(task.deadline) : '';
 
     return `
       <li class="work-item ${task.done ? 'done' : ''}" id="witem-${task.id}">
         <div class="work-item-main">
-          <div class="task-check ${task.done ? 'checked' : ''}"
-               onclick="toggleWorkDone('${listKey}','${task.id}')">
+          <div class="task-check ${task.done ? 'checked' : ''}" onclick="toggleWorkDone('${listKey}','${task.id}')">
             ${task.done ? '<span>✓</span>' : ''}
           </div>
-          <span class="task-text">${escWH(task.text)}</span>
-          <span class="task-priority pri-${priKey}">${priLabel}</span>
-          <span class="work-dur-badge">${durLabel}</span>
+          <div class="work-item-body">
+            <span class="task-text">${escWH(task.text)}</span>
+            ${dlStr ? `<span class="work-dl-badge ${overdue ? 'overdue' : isDueSoon(task) ? 'soon' : ''}">📅 ${dlStr}</span>` : ''}
+          </div>
+          <span class="task-priority pri-${priKey}">${priLbl}</span>
+          <span class="work-dur-badge">${dur}</span>
           <div class="task-actions">
             <button class="task-action-btn ${commentCount > 0 ? 'has-comments' : ''}"
                     data-comment-toggle="${task.id}"
-                    onclick="toggleWorkComments('${task.id}')">
-              💬 ${commentCount > 0 ? commentCount : 'Note'}
-            </button>
-            <button class="task-action-btn delete"
-                    onclick="deleteWorkTask('${listKey}','${task.id}')">Delete</button>
+                    onclick="toggleWorkComments('${task.id}')">💬 ${commentCount > 0 ? commentCount : 'Note'}</button>
+            <button class="task-action-btn delete" onclick="deleteWorkTask('${listKey}','${task.id}')">Delete</button>
           </div>
         </div>
-
         <div class="wcomments-box" id="wcomments-box-${task.id}">
           <div class="wcomment-list">${buildCommentListHtml(task.comments)}</div>
           <div class="wcomment-add-row">
             <input type="text" id="wcomment-input-${task.id}"
-                   placeholder="Add a note or update…" class="wcomment-input"
+                   placeholder="Add a note or status update…" class="wcomment-input"
                    onkeydown="if(event.key==='Enter')addWorkComment('${listKey}','${task.id}')" />
-            <button class="btn btn-sm" onclick="addWorkComment('${listKey}','${task.id}')">Save</button>
+            <button class="btn-sm" onclick="addWorkComment('${listKey}','${task.id}')">Save</button>
           </div>
         </div>
       </li>`;
   }).join('');
 }
 
-// ── Plan My Day ──
+// ═══════════════════════════════════════════════════
+// PLAN MY DAY (full-day modal across all lists)
+// ═══════════════════════════════════════════════════
+
 function planMyDay() {
-  // Gather all undone tasks across lists
-  const allTasks = [];
+  const allTasks  = [];
+  const listOrder = { daily: 0, onboarding: 1, panel: 2, longterm: 3 };
+  const priOrder  = { high: 0, med: 1, low: 2 };
+
   Object.entries(WORK_LISTS).forEach(([key, meta]) => {
     (window.state.work[key] || []).forEach(t => {
       if (!t.done) allTasks.push({ ...t, listKey: key, listLabel: meta.label });
@@ -275,84 +579,47 @@ function planMyDay() {
       <div class="day-plan-empty">
         <div style="font-size:52px;margin-bottom:12px">✅</div>
         <h3>All clear!</h3>
-        <p>No outstanding work tasks. Add some tasks and come back.</p>
+        <p>No outstanding tasks. Head to the Tasks tab to add some.</p>
       </div>`);
     return;
   }
 
-  // Sort: daily first, then priority, then shorter tasks first
-  const listOrder = { daily: 0, onboarding: 1, panel: 2, longterm: 3 };
-  const priOrder  = { high: 0, med: 1, low: 2 };
   allTasks.sort((a, b) => {
     const ld = (listOrder[a.listKey] ?? 3) - (listOrder[b.listKey] ?? 3);
     if (ld !== 0) return ld;
     const pd = (priOrder[a.priority] ?? 1) - (priOrder[b.priority] ?? 1);
-    if (pd !== 0) return pd;
-    return a.duration - b.duration;
+    return pd !== 0 ? pd : a.duration - b.duration;
   });
 
-  // Time-block from 8 AM, insert lunch at noon
-  const end        = WORK_DAY_START_MINS + WORK_DAY_TOTAL_MINS;
-  let   cursor     = WORK_DAY_START_MINS;
-  let   lunchDone  = false;
-  const scheduled  = [];
-  const deferred   = [];
+  const end       = WORK_DAY_START_MINS + WORK_DAY_TOTAL_MINS;
+  let   cursor    = WORK_DAY_START_MINS;
+  let   lunchDone = false;
+  const slots     = [];
+  const missed    = [];
 
-  for (const task of allTasks) {
+  for (const t of allTasks) {
     if (!lunchDone && cursor >= LUNCH_AT_MINS) {
-      scheduled.push({ isBreak: true, start: LUNCH_AT_MINS, end: LUNCH_AT_MINS + LUNCH_DURATION });
-      cursor   = LUNCH_AT_MINS + LUNCH_DURATION;
+      slots.push({ isBreak: true, start: LUNCH_AT_MINS, end: LUNCH_AT_MINS + LUNCH_DURATION });
+      cursor    = LUNCH_AT_MINS + LUNCH_DURATION;
       lunchDone = true;
     }
-    if (cursor + task.duration <= end) {
-      scheduled.push({ ...task, start: cursor, end: cursor + task.duration });
-      cursor += task.duration;
+    if (cursor + t.duration <= end) {
+      slots.push({ ...t, start: cursor, end: cursor + t.duration });
+      cursor += t.duration;
     } else {
-      deferred.push(task);
+      missed.push(t);
     }
   }
 
-  const toTime = mins => {
-    const h    = Math.floor(mins / 60);
-    const m    = mins % 60;
-    const ampm = h < 12 ? 'AM' : 'PM';
-    const hh   = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-    return `${hh}:${m.toString().padStart(2, '0')} ${ampm}`;
+  const toTime = m => {
+    const h = Math.floor(m / 60), min = m % 60, ampm = h < 12 ? 'AM' : 'PM';
+    const hh = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${hh}:${min.toString().padStart(2, '0')} ${ampm}`;
   };
 
-  const totalTaskMins = scheduled.filter(s => !s.isBreak).reduce((n, s) => n + s.duration, 0);
-  const hrs  = Math.floor(totalTaskMins / 60);
-  const mins = totalTaskMins % 60;
-
-  const slotsHtml = scheduled.map(s => {
-    if (s.isBreak) return `
-      <div class="day-plan-break">
-        <span class="dp-time">${toTime(s.start)} – ${toTime(s.end)}</span>
-        <span class="dp-break-label">🍽 Lunch break</span>
-      </div>`;
-
-    const durLabel = WORK_DURATIONS.find(d => d.val === s.duration)?.label || `${s.duration}m`;
-    const priKey   = s.priority === 'high' ? 'high' : s.priority === 'med' ? 'med' : 'low';
-    const priLabel = priKey === 'high' ? 'High' : priKey === 'med' ? 'Med' : 'Low';
-    return `
-      <div class="day-plan-slot">
-        <span class="dp-time">${toTime(s.start)} – ${toTime(s.end)}</span>
-        <div class="dp-task-info">
-          <span class="dp-task-name">${escWH(s.text)}</span>
-          <span class="dp-task-meta">${s.listLabel} · ${durLabel}</span>
-        </div>
-        <span class="task-priority pri-${priKey}">${priLabel}</span>
-      </div>`;
-  }).join('');
-
-  const deferredHtml = deferred.length ? `
-    <div class="day-plan-deferred">
-      <div class="dpd-title">⏭ Not enough time today (${deferred.length} deferred):</div>
-      ${deferred.map(t => {
-        const dur = WORK_DURATIONS.find(d => d.val === t.duration)?.label || `${t.duration}m`;
-        return `<div class="dpd-item">· ${escWH(t.text)} <span>(${dur})</span></div>`;
-      }).join('')}
-    </div>` : '';
+  const totalMins = slots.filter(s => !s.isBreak).reduce((n, s) => n + s.duration, 0);
+  const hrs  = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
 
   showDayPlanModal(`
     <div class="day-plan-header">
@@ -362,9 +629,29 @@ function planMyDay() {
       </div>
       <button class="dp-close-btn" onclick="closeDayPlan()">✕</button>
     </div>
-    <div class="day-plan-schedule">${slotsHtml}</div>
-    ${deferredHtml}
-  `);
+    <div class="day-plan-schedule">
+      ${slots.map(s => s.isBreak
+        ? `<div class="day-plan-break">
+             <span class="dp-time">${toTime(s.start)} – ${toTime(s.end)}</span>
+             <span>🍽 Lunch break</span>
+           </div>`
+        : `<div class="day-plan-slot">
+             <span class="dp-time">${toTime(s.start)} – ${toTime(s.end)}</span>
+             <div class="dp-task-info">
+               <span class="dp-task-name">${escWH(s.text)}</span>
+               <span class="dp-task-meta">${s.listLabel} · ${WORK_DURATIONS.find(d => d.val === s.duration)?.label || s.duration + 'm'}</span>
+             </div>
+             <span class="task-priority pri-${s.priority === 'high' ? 'high' : s.priority === 'med' ? 'med' : 'low'}">
+               ${s.priority === 'high' ? 'High' : s.priority === 'med' ? 'Med' : 'Low'}
+             </span>
+           </div>`
+      ).join('')}
+    </div>
+    ${missed.length ? `
+      <div class="day-plan-deferred">
+        <div class="dpd-title">⏭ Not enough time today (${missed.length} deferred):</div>
+        ${missed.map(t => `<div class="dpd-item">· ${escWH(t.text)} <span>(${WORK_DURATIONS.find(d => d.val === t.duration)?.label || t.duration + 'm'})</span></div>`).join('')}
+      </div>` : ''}`);
 }
 
 function showDayPlanModal(html) {
