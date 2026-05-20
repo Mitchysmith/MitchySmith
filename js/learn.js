@@ -72,23 +72,24 @@ async function refreshLearnData() {
 async function _fetchRates() {
   const grid = document.getElementById('learn-fx-grid');
   try {
-    const to = LEARN_CURRENCIES.join(',');
-    const [r1, r2] = await Promise.all([
-      fetch(`https://api.frankfurter.app/latest?from=AUD&to=${to}`).then(r => r.json()),
-      fetch(`https://api.frankfurter.app/latest?from=AUD&to=${to}&date=${_prevWorkDay()}`).then(r => r.json()),
-    ]);
-    _learnRates = { today: r1.rates, prev: r2.rates };
+    const data = await fetch('https://open.er-api.com/v6/latest/AUD').then(r => r.json());
+    if (data.result !== 'success') throw new Error('bad response');
+
+    const today        = new Date().toISOString().slice(0, 10);
+    const latestStored = JSON.parse(localStorage.getItem('_fxLatest') || 'null');
+
+    // When the day rolls over, promote yesterday's snapshot to "prev" for comparison
+    if (latestStored && latestStored.date !== today) {
+      localStorage.setItem('_fxPrev', JSON.stringify(latestStored));
+    }
+    localStorage.setItem('_fxLatest', JSON.stringify({ rates: data.rates, date: today }));
+
+    const prevStored = JSON.parse(localStorage.getItem('_fxPrev') || 'null');
+    _learnRates = { today: data.rates, prev: prevStored?.rates || null };
     _renderRates();
   } catch {
-    if (grid) grid.innerHTML = `<div class="learn-error">⚠ Could not fetch rates — check your internet connection.</div>`;
+    if (grid) grid.innerHTML = `<div class="learn-error">⚠ Could not fetch rates — check your connection.</div>`;
   }
-}
-
-function _prevWorkDay() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
 }
 
 function _renderRates() {
