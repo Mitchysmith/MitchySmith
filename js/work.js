@@ -18,6 +18,14 @@ const WORK_DURATIONS = [
   { val: 180, label: '3hr'  },
 ];
 
+const WORK_FREQUENCIES = [
+  { val: 'none',        label: 'One-time'    },
+  { val: 'daily',       label: 'Daily'       },
+  { val: 'weekly',      label: 'Weekly'      },
+  { val: 'fortnightly', label: 'Fortnightly' },
+  { val: 'monthly',     label: 'Monthly'     },
+];
+
 const WORK_DAY_START_MINS = 8 * 60;
 const WORK_DAY_TOTAL_MINS = 420;
 const LUNCH_AT_MINS       = 12 * 60;
@@ -30,9 +38,31 @@ function initWork() {
   if (!window.state.work) window.state.work = {};
   Object.keys(WORK_LISTS).forEach(k => {
     if (!window.state.work[k]) window.state.work[k] = [];
-    // Migrate: ensure all existing tasks have a completions array
-    window.state.work[k].forEach(t => { if (!t.completions) t.completions = []; });
+    window.state.work[k].forEach(t => {
+      if (!t.completions) t.completions = [];
+      if (!t.repeat)      t.repeat      = 'none';
+      if (t.lastDone === undefined) t.lastDone = null;
+      if (!t.subtasks)    t.subtasks    = [];
+    });
   });
+}
+
+function checkAndResetRecurring(listKey) {
+  const tasks   = window.state.work[listKey] || [];
+  let   changed = false;
+  const todayMs = new Date(new Date().toDateString()).getTime();
+  const now     = new Date();
+  tasks.forEach(t => {
+    if (!t.done || !t.repeat || t.repeat === 'none' || !t.lastDone) return;
+    const ld   = new Date(t.lastDone);
+    let reset  = false;
+    if      (t.repeat === 'daily')       reset = new Date(ld.toDateString()).getTime() < todayMs;
+    else if (t.repeat === 'weekly')      reset = (Date.now() - t.lastDone) >= 7  * 86400000;
+    else if (t.repeat === 'fortnightly') reset = (Date.now() - t.lastDone) >= 14 * 86400000;
+    else if (t.repeat === 'monthly')     reset = ld.getMonth() !== now.getMonth() || ld.getFullYear() !== now.getFullYear();
+    if (reset) { t.done = false; changed = true; }
+  });
+  if (changed) saveState();
 }
 
 // ── Root render ──
@@ -308,6 +338,9 @@ function buildTasksPanel() {
           <option value="low">Low</option>
         </select>
         <select id="wdur-daily" class="work-select">${durationOpts('daily')}</select>
+        <select id="wfreq-daily" class="work-select" title="Repeat frequency">
+          ${WORK_FREQUENCIES.map(f => `<option value="${f.val}">${f.label}</option>`).join('')}
+        </select>
         <input type="date" id="wdl-daily" class="work-select" title="Deadline (optional)" />
         <button class="btn btn-primary" onclick="addWorkTask('daily')">Add</button>
       </div>
@@ -330,6 +363,9 @@ function buildTasksPanel() {
               <option value="low">Low</option>
             </select>
             <select id="wdur-${key}" class="work-select">${durationOpts(key)}</select>
+            <select id="wfreq-${key}" class="work-select" title="Repeat frequency">
+              ${WORK_FREQUENCIES.map(f => `<option value="${f.val}">${f.label}</option>`).join('')}
+            </select>
             <input type="date" id="wdl-${key}" class="work-select" title="Deadline (optional)" />
             <button class="btn btn-primary" onclick="addWorkTask('${key}')" style="padding:7px 12px">+</button>
           </div>
@@ -440,6 +476,9 @@ function addWorkTask(listKey) {
     duration: +(document.getElementById(`wdur-${listKey}`)?.value || 30),
     deadline: document.getElementById(`wdl-${listKey}`)?.value || '',
     done:        false,
+    repeat:      document.getElementById(`wfreq-${listKey}`)?.value || 'none',
+    lastDone:    null,
+    subtasks:    [],
     comments:    [],
     completions: [],
     created:     Date.now(),
@@ -459,6 +498,7 @@ function toggleWorkDone(listKey, id) {
   if (task.done) {
     if (!task.completions) task.completions = [];
     task.completions.push({ ts: Date.now(), year: new Date().getFullYear() });
+    task.lastDone = Date.now();
 
     // Immediate visual feedback before DOM re-render
     const checkEl = document.querySelector(`#witem-${id} .task-check`);
@@ -541,6 +581,75 @@ function deleteWorkTask(listKey, id) {
   refreshSummary();
 }
 
+// ── Sub-tasks (Steps) ──
+function buildSubtaskListHtml(listKey, task) {
+  if (!task.subtasks?.length) return '<p class="wcomment-empty">No steps yet. Break this into smaller pieces.</p>';
+  return task.subtasks.map(s => `
+    <div class="wsubtask-item ${s.done ? 'done' : ''}">
+      <div class="task-check ${s.done ? 'checked' : ''}"
+           style="width:18px;height:18px;border-radius:5px;font-size:10px;flex-shrink:0"
+           onclick="toggleSubtask('${listKey}','${task.id}','${s.id}')">
+        ${s.done ? '✓' : ''}
+      </div>
+      <span class="wsubtask-text">${escWH(s.text)}</span>
+      <button class="wsubtask-del" onclick="deleteSubtask('${listKey}','${task.id}','${s.id}')">✕</button>
+    </div>`).join('');
+}
+
+function toggleSubtasks(taskId) {
+  document.getElementById(`wsubtasks-${taskId}`)?.classList.toggle('open');
+}
+
+function addSubtask(listKey, taskId) {
+  const input = document.getElementById(`wsubtask-input-${taskId}`);
+  const text  = input?.value.trim();
+  if (!text) return;
+  const task = (window.state.work[listKey] || []).find(t => t.id === taskId);
+  if (!task) return;
+  if (!task.subtasks) task.subtasks = [];
+  task.subtasks.push({ id: 'ws_' + Date.now(), text, done: false });
+  saveState();
+  if (input) input.value = '';
+  refreshSubtaskList(listKey, taskId);
+  refreshSummary();
+}
+
+function toggleSubtask(listKey, taskId, subId) {
+  const task = (window.state.work[listKey] || []).find(t => t.id === taskId);
+  const sub  = task?.subtasks?.find(s => s.id === subId);
+  if (!sub) return;
+  sub.done = !sub.done;
+  saveState();
+  refreshSubtaskList(listKey, taskId);
+  refreshSummary();
+}
+
+function deleteSubtask(listKey, taskId, subId) {
+  const task = (window.state.work[listKey] || []).find(t => t.id === taskId);
+  if (!task) return;
+  task.subtasks = (task.subtasks || []).filter(s => s.id !== subId);
+  saveState();
+  refreshSubtaskList(listKey, taskId);
+  refreshSummary();
+}
+
+function refreshSubtaskList(listKey, taskId) {
+  const task   = (window.state.work[listKey] || []).find(t => t.id === taskId);
+  if (!task) return;
+  const listEl = document.getElementById(`wsubtask-list-${taskId}`);
+  if (listEl)  listEl.innerHTML = buildSubtaskListHtml(listKey, task);
+  const badge  = document.querySelector(`#witem-${taskId} .work-steps-badge`);
+  if (badge) {
+    const done  = (task.subtasks || []).filter(s => s.done).length;
+    const total = (task.subtasks || []).length;
+    badge.textContent = `${done}/${total} steps`;
+  }
+  const stepsBtn = document.querySelector(`#witem-${taskId} .task-action-btn.steps`);
+  if (stepsBtn) {
+    stepsBtn.classList.toggle('has-steps', task.subtasks?.length > 0);
+  }
+}
+
 // ── Inline edit ──
 function editWorkTask(listKey, id) {
   const task = (window.state.work[listKey] || []).find(t => t.id === id);
@@ -565,6 +674,9 @@ function editWorkTask(listKey, id) {
           <option value="low"  ${task.priority === 'low'  ? 'selected' : ''}>Low</option>
         </select>
         <select id="wedit-dur-${id}">${durOptions}</select>
+        <select id="wedit-freq-${id}">
+          ${WORK_FREQUENCIES.map(f => `<option value="${f.val}" ${(task.repeat||'none') === f.val ? 'selected' : ''}>${f.label}</option>`).join('')}
+        </select>
         <input type="date" id="wedit-dl-${id}" value="${deadlineVal}" />
         <button class="task-action-btn save"   onclick="saveWorkTaskEdit('${listKey}','${id}')">Save</button>
         <button class="task-action-btn cancel" onclick="cancelWorkTaskEdit('${listKey}')">Cancel</button>
@@ -582,9 +694,10 @@ function saveWorkTaskEdit(listKey, id) {
   if (!text) return;
 
   task.text     = text;
-  task.priority = document.getElementById(`wedit-pri-${id}`)?.value || task.priority;
+  task.priority = document.getElementById(`wedit-pri-${id}`)?.value  || task.priority;
   task.duration = Number(document.getElementById(`wedit-dur-${id}`)?.value) || task.duration;
-  task.deadline = document.getElementById(`wedit-dl-${id}`)?.value || '';
+  task.repeat   = document.getElementById(`wedit-freq-${id}`)?.value || 'none';
+  task.deadline = document.getElementById(`wedit-dl-${id}`)?.value  || '';
 
   saveState();
   refreshWorkList(listKey);
@@ -647,6 +760,7 @@ function refreshWorkCount(listKey) {
 }
 
 function refreshWorkList(listKey) {
+  checkAndResetRecurring(listKey);
   const ul = document.getElementById(`wlist-${listKey}`);
   if (!ul) return;
   const tasks = window.state.work[listKey] || [];
@@ -671,7 +785,12 @@ function refreshWorkList(listKey) {
     const priKey       = task.priority === 'high' ? 'high' : task.priority === 'med' ? 'med' : 'low';
     const priLbl       = priKey === 'high' ? 'High' : priKey === 'med' ? 'Med' : 'Low';
     const overdue      = isOverdue(task);
-    const dlStr        = task.deadline ? formatDeadline(task.deadline) : '';
+    const dlStr       = task.deadline ? formatDeadline(task.deadline) : '';
+    const stepsDone   = (task.subtasks || []).filter(s => s.done).length;
+    const stepsTotal  = (task.subtasks || []).length;
+    const freqLabel   = task.repeat && task.repeat !== 'none'
+                        ? WORK_FREQUENCIES.find(f => f.val === task.repeat)?.label || ''
+                        : '';
 
     return `
       <li class="work-item ${task.done ? 'done' : ''}" id="witem-${task.id}">
@@ -682,15 +801,27 @@ function refreshWorkList(listKey) {
           <div class="work-item-body">
             <span class="task-text">${escWH(task.text)}</span>
             ${dlStr ? `<span class="work-dl-badge ${overdue ? 'overdue' : isDueSoon(task) ? 'soon' : ''}">📅 ${dlStr}</span>` : ''}
+            ${stepsTotal ? `<span class="work-steps-badge">${stepsDone}/${stepsTotal} steps</span>` : ''}
           </div>
           <span class="task-priority pri-${priKey}">${priLbl}</span>
+          ${freqLabel ? `<span class="work-repeat-badge">♻ ${freqLabel}</span>` : ''}
           <span class="work-dur-badge">${dur}</span>
           <div class="task-actions">
+            <button class="task-action-btn steps ${stepsTotal ? 'has-steps' : ''}"
+                    onclick="toggleSubtasks('${task.id}')">📋 Steps</button>
             <button class="task-action-btn ${commentCount > 0 ? 'has-comments' : ''}"
                     data-comment-toggle="${task.id}"
                     onclick="toggleWorkComments('${task.id}')">💬 ${commentCount > 0 ? commentCount : 'Note'}</button>
             <button class="task-action-btn edit" onclick="editWorkTask('${listKey}','${task.id}')">Edit</button>
             <button class="task-action-btn delete" onclick="deleteWorkTask('${listKey}','${task.id}')">Delete</button>
+          </div>
+        </div>
+        <div class="wsubtasks-box" id="wsubtasks-${task.id}">
+          <div class="wsubtask-list" id="wsubtask-list-${task.id}">${buildSubtaskListHtml(listKey, task)}</div>
+          <div class="wsubtask-add-row">
+            <input type="text" id="wsubtask-input-${task.id}" placeholder="Add a step…" class="wcomment-input"
+                   onkeydown="if(event.key==='Enter')addSubtask('${listKey}','${task.id}')" />
+            <button class="btn-sm" onclick="addSubtask('${listKey}','${task.id}')">+ Step</button>
           </div>
         </div>
         <div class="wcomments-box" id="wcomments-box-${task.id}">
@@ -717,7 +848,25 @@ function planMyDay() {
 
   Object.entries(WORK_LISTS).forEach(([key, meta]) => {
     (window.state.work[key] || []).forEach(t => {
-      if (!t.done) allTasks.push({ ...t, listKey: key, listLabel: meta.label });
+      if (t.done) return;
+      const undoneSteps = (t.subtasks || []).filter(s => !s.done);
+      if (undoneSteps.length > 0) {
+        const stepDur = Math.max(15, Math.round(t.duration / undoneSteps.length));
+        undoneSteps.forEach(s => {
+          allTasks.push({
+            ...t,
+            id:         `${t.id}_${s.id}`,
+            text:       s.text,
+            parentText: t.text,
+            duration:   stepDur,
+            listKey:    key,
+            listLabel:  meta.label,
+            isStep:     true,
+          });
+        });
+      } else {
+        allTasks.push({ ...t, listKey: key, listLabel: meta.label });
+      }
     });
   });
 
@@ -790,7 +939,9 @@ function planMyDay() {
              <span class="dp-time">${toTime(s.start)} – ${toTime(s.end)}</span>
              <div class="dp-task-info">
                <span class="dp-task-name">${escWH(s.text)}</span>
-               <span class="dp-task-meta">${s.listLabel} · ${WORK_DURATIONS.find(d => d.val === s.duration)?.label || s.duration + 'm'}</span>
+               <span class="dp-task-meta">
+                 ${s.isStep ? `<span class="dp-step-parent">📂 ${escWH(s.parentText)}</span> · ` : ''}${s.listLabel} · ${WORK_DURATIONS.find(d => d.val === s.duration)?.label || s.duration + 'm'}
+               </span>
              </div>
              <span class="task-priority pri-${s.priority === 'high' ? 'high' : s.priority === 'med' ? 'med' : 'low'}">
                ${s.priority === 'high' ? 'High' : s.priority === 'med' ? 'Med' : 'Low'}

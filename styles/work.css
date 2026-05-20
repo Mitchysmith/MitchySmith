@@ -347,6 +347,87 @@
 .task-action-btn.edit   { color: var(--blue); }
 .task-action-btn.save   { color: var(--green); border-color: rgba(76,175,120,0.4); }
 .task-action-btn.cancel { color: var(--text-muted); }
+.task-action-btn.steps  { color: var(--text-muted); }
+.task-action-btn.steps.has-steps { color: #c084fc; border-color: rgba(192,132,252,0.4); }
+
+/* ── Repeat badge ── */
+.work-repeat-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(250,204,21,0.12);
+  color: #facc15;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Steps badge (inline on task body) ── */
+.work-steps-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(192,132,252,0.12);
+  color: #c084fc;
+  white-space: nowrap;
+}
+
+/* ── Sub-tasks (Steps) box ── */
+.wsubtasks-box {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.25s ease;
+  padding: 0 14px;
+  background: rgba(192,132,252,0.06);
+  border-top: 1px solid transparent;
+}
+.wsubtasks-box.open {
+  max-height: 480px;
+  padding: 12px 14px;
+  border-top-color: rgba(192,132,252,0.15);
+}
+.wsubtask-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-soft);
+  transition: opacity var(--transition);
+}
+.wsubtask-item:last-child { border-bottom: none; }
+.wsubtask-item.done { opacity: 0.45; }
+.wsubtask-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+}
+.wsubtask-item.done .wsubtask-text {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.wsubtask-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: color var(--transition);
+}
+.wsubtask-del:hover { color: #f87171; }
+.wsubtask-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Plan My Day — step parent label */
+.dp-step-parent {
+  color: #c084fc;
+  font-size: 11px;
+}
 
 /* ── Inline edit form ── */
 .work-edit-form {
