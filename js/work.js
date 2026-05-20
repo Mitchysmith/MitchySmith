@@ -338,9 +338,12 @@ function buildTasksPanel() {
           <option value="low">Low</option>
         </select>
         <select id="wdur-daily" class="work-select">${durationOpts('daily')}</select>
-        <select id="wfreq-daily" class="work-select" title="Repeat frequency">
-          ${WORK_FREQUENCIES.map(f => `<option value="${f.val}">${f.label}</option>`).join('')}
-        </select>
+        <label class="work-freq-wrap" title="How often does this task repeat?">
+          <span class="work-freq-icon">♻</span>
+          <select id="wfreq-daily" class="work-freq-select">
+            ${WORK_FREQUENCIES.map(f => `<option value="${f.val}">${f.label}</option>`).join('')}
+          </select>
+        </label>
         <input type="date" id="wdl-daily" class="work-select" title="Deadline (optional)" />
         <button class="btn btn-primary" onclick="addWorkTask('daily')">Add</button>
       </div>
@@ -363,9 +366,12 @@ function buildTasksPanel() {
               <option value="low">Low</option>
             </select>
             <select id="wdur-${key}" class="work-select">${durationOpts(key)}</select>
-            <select id="wfreq-${key}" class="work-select" title="Repeat frequency">
-              ${WORK_FREQUENCIES.map(f => `<option value="${f.val}">${f.label}</option>`).join('')}
-            </select>
+            <label class="work-freq-wrap" title="How often does this task repeat?">
+              <span class="work-freq-icon">♻</span>
+              <select id="wfreq-${key}" class="work-freq-select">
+                ${WORK_FREQUENCIES.map(f => `<option value="${f.val}">${f.label}</option>`).join('')}
+              </select>
+            </label>
             <input type="date" id="wdl-${key}" class="work-select" title="Deadline (optional)" />
             <button class="btn btn-primary" onclick="addWorkTask('${key}')" style="padding:7px 12px">+</button>
           </div>
@@ -497,7 +503,9 @@ function toggleWorkDone(listKey, id) {
 
   if (task.done) {
     if (!task.completions) task.completions = [];
-    task.completions.push({ ts: Date.now(), year: new Date().getFullYear() });
+    const todayStr    = new Date().toDateString();
+    const doneToday   = task.completions.some(c => new Date(c.ts).toDateString() === todayStr);
+    if (!doneToday) task.completions.push({ ts: Date.now(), year: new Date().getFullYear() });
     task.lastDone = Date.now();
 
     // Immediate visual feedback before DOM re-render

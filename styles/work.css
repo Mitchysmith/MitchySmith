@@ -350,6 +350,39 @@
 .task-action-btn.steps  { color: var(--text-muted); }
 .task-action-btn.steps.has-steps { color: #c084fc; border-color: rgba(192,132,252,0.4); }
 
+/* ── Frequency picker (add-row) ── */
+.work-freq-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(250,204,21,0.08);
+  border: 1px solid rgba(250,204,21,0.30);
+  border-radius: var(--radius-sm);
+  padding: 0 8px 0 8px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.work-freq-wrap:hover { background: rgba(250,204,21,0.14); border-color: rgba(250,204,21,0.5); }
+.work-freq-icon {
+  font-size: 13px;
+  color: #facc15;
+  line-height: 1;
+}
+.work-freq-select {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 9px 0;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none !important;
+}
+.work-freq-select:focus { border-color: transparent; box-shadow: none; }
+
 /* ── Repeat badge ── */
 .work-repeat-badge {
   font-size: 10px;
