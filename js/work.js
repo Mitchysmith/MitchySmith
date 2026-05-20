@@ -541,6 +541,60 @@ function deleteWorkTask(listKey, id) {
   refreshSummary();
 }
 
+// ── Inline edit ──
+function editWorkTask(listKey, id) {
+  const task = (window.state.work[listKey] || []).find(t => t.id === id);
+  if (!task) return;
+
+  const durOptions = WORK_DURATIONS.map(d =>
+    `<option value="${d.val}" ${task.duration === d.val ? 'selected' : ''}>${d.label}</option>`
+  ).join('');
+
+  const deadlineVal = task.deadline || '';
+
+  const main = document.querySelector(`#witem-${id} .work-item-main`);
+  if (!main) return;
+
+  main.innerHTML = `
+    <div class="work-edit-form">
+      <input class="work-edit-input" id="wedit-text-${id}" type="text" value="${escWH(task.text)}" placeholder="Task description" />
+      <div class="work-edit-row2">
+        <select id="wedit-pri-${id}">
+          <option value="high" ${task.priority === 'high' ? 'selected' : ''}>High</option>
+          <option value="med"  ${task.priority === 'med'  ? 'selected' : ''}>Med</option>
+          <option value="low"  ${task.priority === 'low'  ? 'selected' : ''}>Low</option>
+        </select>
+        <select id="wedit-dur-${id}">${durOptions}</select>
+        <input type="date" id="wedit-dl-${id}" value="${deadlineVal}" />
+        <button class="task-action-btn save"   onclick="saveWorkTaskEdit('${listKey}','${id}')">Save</button>
+        <button class="task-action-btn cancel" onclick="cancelWorkTaskEdit('${listKey}')">Cancel</button>
+      </div>
+    </div>`;
+
+  document.getElementById(`wedit-text-${id}`)?.focus();
+}
+
+function saveWorkTaskEdit(listKey, id) {
+  const task = (window.state.work[listKey] || []).find(t => t.id === id);
+  if (!task) return;
+
+  const text = document.getElementById(`wedit-text-${id}`)?.value.trim();
+  if (!text) return;
+
+  task.text     = text;
+  task.priority = document.getElementById(`wedit-pri-${id}`)?.value || task.priority;
+  task.duration = Number(document.getElementById(`wedit-dur-${id}`)?.value) || task.duration;
+  task.deadline = document.getElementById(`wedit-dl-${id}`)?.value || '';
+
+  saveState();
+  refreshWorkList(listKey);
+  refreshSummary();
+}
+
+function cancelWorkTaskEdit(listKey) {
+  refreshWorkList(listKey);
+}
+
 // ── Comments ──
 function toggleWorkComments(id) {
   document.getElementById(`wcomments-box-${id}`)?.classList.toggle('open');
@@ -635,6 +689,7 @@ function refreshWorkList(listKey) {
             <button class="task-action-btn ${commentCount > 0 ? 'has-comments' : ''}"
                     data-comment-toggle="${task.id}"
                     onclick="toggleWorkComments('${task.id}')">💬 ${commentCount > 0 ? commentCount : 'Note'}</button>
+            <button class="task-action-btn edit" onclick="editWorkTask('${listKey}','${task.id}')">Edit</button>
             <button class="task-action-btn delete" onclick="deleteWorkTask('${listKey}','${task.id}')">Delete</button>
           </div>
         </div>

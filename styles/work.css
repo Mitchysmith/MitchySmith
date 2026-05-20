@@ -344,6 +344,43 @@
 
 /* Comment button — highlight when notes exist */
 .task-action-btn.has-comments { color: var(--blue); border-color: rgba(106,173,255,0.35); }
+.task-action-btn.edit   { color: var(--blue); }
+.task-action-btn.save   { color: var(--green); border-color: rgba(76,175,120,0.4); }
+.task-action-btn.cancel { color: var(--text-muted); }
+
+/* ── Inline edit form ── */
+.work-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  padding: 4px 0;
+}
+.work-edit-input {
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--surface-2);
+  border: 1px solid var(--orange);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  color: var(--text);
+  outline: none;
+  width: 100%;
+  box-shadow: 0 0 0 3px var(--orange-glow);
+}
+.work-edit-row2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.work-edit-row2 select,
+.work-edit-row2 input[type="date"] {
+  font-size: 12px;
+  padding: 5px 8px;
+  width: auto;
+  flex-shrink: 0;
+}
 
 /* Comments box */
 .wcomments-box {
