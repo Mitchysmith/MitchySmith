@@ -79,14 +79,32 @@
 
       <!-- Loading overlay -->
       <div class="loader-overlay" id="loader">
-        <div class="pacman-wrap">
-          <div class="pacman"></div>
-          <div class="dots">
-            <span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span>
+        <div class="pac-game">
+          <div class="pac-arcade-row">
+            <div class="pac-score-block">
+              <div class="pac-player-lbl">1UP</div>
+              <div class="pac-score-num" id="pac-score">0000</div>
+            </div>
+            <div class="pac-score-block" style="text-align:right">
+              <div class="pac-player-lbl">HI-SCORE</div>
+              <div class="pac-score-num" style="color:#fff">3620</div>
+            </div>
+          </div>
+
+          <div class="pac-lane">
+            <div class="pac-ghost"></div>
+            <div class="pacman"></div>
+            <div class="dots">
+              <span></span><span></span><span></span>
+              <span class="power-dot"></span>
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <div class="pac-loading-text">
+            <span style="--i:0">L</span><span style="--i:1">O</span><span style="--i:2">A</span><span style="--i:3">D</span><span style="--i:4">I</span><span style="--i:5">N</span><span style="--i:6">G</span>
           </div>
         </div>
-        <p class="loader-text">Loading your dashboard…</p>
       </div>
 
       <!-- Sections -->

@@ -5,6 +5,7 @@ const WORK_LISTS = {
   longterm:   { label: 'Projects',       icon: '🗂️', color: 'var(--blue)'   },
   onboarding: { label: 'Onboarding',    icon: '🚀', color: 'var(--green)'  },
   panel:      { label: 'Panel Reviews', icon: '📋', color: '#c084fc'       },
+  personal:   { label: 'Personal',      icon: '🏠', color: '#f472b6'       },
 };
 
 const WORK_DURATIONS = [
@@ -315,7 +316,7 @@ function buildTasksPanel() {
 
     <!-- Three smaller widgets in a row -->
     <div class="work-widgets-row">
-      ${['longterm', 'onboarding', 'panel'].map(key => `
+      ${['longterm', 'onboarding', 'panel', 'personal'].map(key => `
         <div class="work-widget">
           <div class="work-widget-hdr">
             <span class="wwh-title" style="color:${WORK_LISTS[key].color}">${WORK_LISTS[key].icon} ${WORK_LISTS[key].label}</span>
@@ -454,15 +455,82 @@ function toggleWorkDone(listKey, id) {
   const task = (window.state.work[listKey] || []).find(t => t.id === id);
   if (!task) return;
   task.done = !task.done;
+
   if (task.done) {
     if (!task.completions) task.completions = [];
     task.completions.push({ ts: Date.now(), year: new Date().getFullYear() });
+
+    // Immediate visual feedback before DOM re-render
+    const checkEl = document.querySelector(`#witem-${id} .task-check`);
+    const rowEl   = document.getElementById(`witem-${id}`);
+    if (checkEl) { checkEl.classList.add('checked', 'bounce'); checkEl.innerHTML = '<span>✓</span>'; }
+    if (rowEl)   rowEl.classList.add('done');
+
+    workCompleteEffect(checkEl);
+    saveState();
+
+    // Delay list re-render so animations play first
+    setTimeout(() => {
+      refreshWorkList(listKey);
+      refreshWorkCount(listKey);
+      refreshSummary();
+      refreshRepository();
+    }, 650);
+  } else {
+    saveState();
+    refreshWorkList(listKey);
+    refreshWorkCount(listKey);
+    refreshSummary();
+    refreshRepository();
   }
-  saveState();
-  refreshWorkList(listKey);
-  refreshWorkCount(listKey);
-  refreshSummary();
-  refreshRepository();
+}
+
+function workCompleteEffect(checkEl) {
+  if (!checkEl) return;
+
+  // Bounce the checkbox
+  checkEl.classList.add('bounce');
+  setTimeout(() => checkEl.classList.remove('bounce'), 500);
+
+  // Shimmer the task row
+  const rowEl = checkEl.closest('.work-item');
+  if (rowEl) {
+    rowEl.classList.add('work-completing');
+    setTimeout(() => rowEl.classList.remove('work-completing'), 700);
+  }
+
+  // Particle burst
+  const rect   = checkEl.getBoundingClientRect();
+  const cx     = rect.left + rect.width / 2;
+  const cy     = rect.top  + rect.height / 2;
+  const colors = ['#4caf78', '#ffe000', '#6aadff', '#ff7730', '#c084fc', '#fff'];
+
+  for (let i = 0; i < 12; i++) {
+    const p     = document.createElement('div');
+    p.className = 'work-particle';
+    const angle = (i / 12) * 360;
+    const dist  = 28 + Math.random() * 34;
+    const size  = 5 + Math.random() * 5;
+    p.style.cssText = `
+      left:${cx}px; top:${cy}px;
+      width:${size}px; height:${size}px;
+      background:${colors[Math.floor(Math.random() * colors.length)]};
+      --tx:${Math.cos(angle * Math.PI / 180) * dist}px;
+      --ty:${Math.sin(angle * Math.PI / 180) * dist - 14}px;
+      animation-delay:${i * 0.025}s;
+      border-radius:${Math.random() > 0.4 ? '50%' : '3px'};
+    `;
+    document.body.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }
+
+  // "Done!" toast
+  const toast = document.createElement('div');
+  toast.className = 'work-done-toast';
+  toast.textContent = '✓ Done!';
+  toast.style.cssText = `left:${cx + 18}px; top:${cy - 6}px;`;
+  document.body.appendChild(toast);
+  toast.addEventListener('animationend', () => toast.remove());
 }
 
 function deleteWorkTask(listKey, id) {
@@ -589,7 +657,7 @@ function refreshWorkList(listKey) {
 
 function planMyDay() {
   const allTasks  = [];
-  const listOrder = { daily: 0, onboarding: 1, panel: 2, longterm: 3 };
+  const listOrder = { daily: 0, onboarding: 1, panel: 2, longterm: 3, personal: 4 };
   const priOrder  = { high: 0, med: 1, low: 2 };
 
   Object.entries(WORK_LISTS).forEach(([key, meta]) => {

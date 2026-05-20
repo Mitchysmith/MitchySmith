@@ -30,6 +30,7 @@ const DB = {
       longterm:   [],
       onboarding: [],
       panel:      [],
+      personal:   [],
     },
   },
 

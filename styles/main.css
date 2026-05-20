@@ -205,22 +205,53 @@ select option { background: var(--surface-2); }
 }
 .loader-overlay.hidden { opacity: 0; pointer-events: none; }
 
-/* ── Pac-Man Loader: yellow chomper eating white dots ── */
-.pacman-wrap {
-  position: relative;
-  width: 260px;
-  height: 50px;
+/* ── Pac-Man Arcade Loader ── */
+.pac-game {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 20px;
+  font-family: 'Courier New', monospace;
 }
 
-/* The track of dots sits in a row */
+/* Score header */
+.pac-arcade-row {
+  display: flex;
+  gap: 80px;
+  align-items: flex-start;
+}
+.pac-score-block { text-align: left; }
+.pac-player-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: 2px;
+  margin-bottom: 2px;
+}
+.pac-score-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffe000;
+  letter-spacing: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Game lane */
+.pac-lane {
+  position: relative;
+  width: 340px;
+  height: 60px;
+}
+
+/* Dots */
 .dots {
   position: absolute;
-  left: 56px;
+  left: 58px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 20px;
 }
 .dots span {
   display: block;
@@ -228,57 +259,134 @@ select option { background: var(--surface-2); }
   height: 9px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 0 6px rgba(255,255,255,0.6);
+  box-shadow: 0 0 6px rgba(255,255,255,0.7);
+  flex-shrink: 0;
   animation: dotEat 2.4s linear infinite;
 }
+.power-dot {
+  width: 17px !important;
+  height: 17px !important;
+  background: #ffe000 !important;
+  box-shadow: 0 0 14px rgba(255,224,0,0.9) !important;
+  animation: dotEat 2.4s linear infinite, powerPulse 0.45s ease infinite alternate !important;
+}
+@keyframes powerPulse {
+  from { transform: scale(0.9); }
+  to   { transform: scale(1.25); box-shadow: 0 0 20px rgba(255,224,0,1); }
+}
 .dots span:nth-child(1) { animation-delay: 0s;    }
-.dots span:nth-child(2) { animation-delay: 0.3s;  }
-.dots span:nth-child(3) { animation-delay: 0.6s;  }
-.dots span:nth-child(4) { animation-delay: 0.9s;  }
-.dots span:nth-child(5) { animation-delay: 1.2s;  }
-.dots span:nth-child(6) { animation-delay: 1.5s;  }
-.dots span:nth-child(7) { animation-delay: 1.8s;  }
+.dots span:nth-child(2) { animation-delay: 0.24s; }
+.dots span:nth-child(3) { animation-delay: 0.48s; }
+.dots span:nth-child(4) { animation-delay: 0.72s; }
+.dots span:nth-child(5) { animation-delay: 0.96s; }
+.dots span:nth-child(6) { animation-delay: 1.2s;  }
+.dots span:nth-child(7) { animation-delay: 1.44s; }
 
 @keyframes dotEat {
-  0%      { opacity: 1; transform: scale(1); }
-  /* dot is eaten when pac-man reaches it — fade out quickly */
-  15%     { opacity: 0; transform: scale(0.2); }
-  100%    { opacity: 0; transform: scale(0.2); }
+  0%   { opacity: 1; transform: scale(1); }
+  15%  { opacity: 0; transform: scale(0.1); }
+  100% { opacity: 0; transform: scale(0.1); }
 }
 
-/* Pac-Man itself slides across then resets */
+/* Pac-Man */
 .pacman {
   position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   left: 0;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   background: #ffe000;
   border-radius: 50%;
-  box-shadow: 0 0 18px rgba(255,224,0,0.45);
-  animation: pacMove 2.4s linear infinite, chomp 0.3s linear infinite;
+  box-shadow: 0 0 22px rgba(255,224,0,0.6);
+  z-index: 2;
+  animation: pacMove 2.4s linear infinite, chomp 0.22s ease-in-out infinite;
 }
-
 @keyframes pacMove {
-  0%   { left: 0; }
-  90%  { left: 210px; opacity: 1; }
-  91%  { opacity: 0; }
-  92%  { left: 0; opacity: 0; }
+  0%   { left: 0; opacity: 1; }
+  87%  { left: 278px; opacity: 1; }
+  89%  { left: 300px; opacity: 0; }
+  90%  { left: 0; opacity: 0; }
   100% { left: 0; opacity: 1; }
 }
-
 @keyframes chomp {
-  0%   { clip-path: polygon(50% 50%, 100% 15%, 100% 85%); }
-  25%  { clip-path: polygon(50% 50%, 100% 35%, 100% 65%); }
-  50%  { clip-path: polygon(50% 50%, 100% 49%, 100% 51%); }
-  75%  { clip-path: polygon(50% 50%, 100% 35%, 100% 65%); }
-  100% { clip-path: polygon(50% 50%, 100% 15%, 100% 85%); }
+  0%   { clip-path: polygon(50% 50%, 100% 12%, 100% 88%); }
+  25%  { clip-path: polygon(50% 50%, 100% 30%, 100% 70%); }
+  50%  { clip-path: polygon(50% 50%, 100% 48%, 100% 52%); }
+  75%  { clip-path: polygon(50% 50%, 100% 30%, 100% 70%); }
+  100% { clip-path: polygon(50% 50%, 100% 12%, 100% 88%); }
 }
 
-.loader-text {
-  margin-top: 24px;
+/* Ghost (Blinky — red, turns blue when power pellet is eaten) */
+.pac-ghost {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 40px;
+  border-radius: 18px 18px 0 0;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 86% 100%, 74% 70%, 62% 100%, 50% 70%, 38% 100%, 26% 70%, 14% 100%, 0% 70%);
+  z-index: 1;
+  animation: ghostMove 2.4s linear infinite, ghostBody 2.4s linear infinite;
+}
+.pac-ghost::before {
+  content: '';
+  position: absolute;
+  width: 11px; height: 13px;
+  background: #fff;
+  border-radius: 50% 50% 40% 40%;
+  top: 10px; left: 5px;
+  box-shadow: 15px 0 0 #fff;
+}
+.pac-ghost::after {
+  content: '';
+  position: absolute;
+  width: 5px; height: 6px;
+  background: #1133ee;
+  border-radius: 50%;
+  top: 14px; left: 8px;
+  box-shadow: 15px 0 0 #1133ee;
+  animation: ghostPupil 2.4s linear infinite;
+}
+@keyframes ghostMove {
+  0%   { left: -54px; opacity: 0; }
+  8%   { opacity: 1; }
+  86%  { left: 226px; opacity: 1; }
+  89%  { left: 260px; opacity: 0; }
+  90%  { left: -54px; opacity: 0; }
+  100% { left: -54px; opacity: 0; }
+}
+/* Red → blue when Pac-Man hits power pellet (≈30% through) */
+@keyframes ghostBody {
+  0%,  29% { background: #ff2121; }
+  30%, 82% { background: #2244ee; }
+  83%      { background: #ff2121; }
+  100%     { background: #ff2121; }
+}
+@keyframes ghostPupil {
+  0%,  29% { background: #1133ee; box-shadow: 15px 0 0 #1133ee; }
+  30%, 82% { background: rgba(255,255,255,0.9); box-shadow: 15px 0 0 rgba(255,255,255,0.9); }
+  83%      { background: #1133ee; box-shadow: 15px 0 0 #1133ee; }
+  100%     { background: #1133ee; box-shadow: 15px 0 0 #1133ee; }
+}
+
+/* Bouncing LOADING text */
+.pac-loading-text {
+  display: flex;
+  gap: 1px;
+  letter-spacing: 4px;
+}
+.pac-loading-text span {
+  display: inline-block;
   font-size: 14px;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
+  font-weight: 800;
+  color: #ffe000;
+  animation: letterBounce 0.8s ease infinite;
+  animation-delay: calc(var(--i) * 0.1s);
+}
+@keyframes letterBounce {
+  0%, 55%, 100% { transform: translateY(0);   color: #ffe000; }
+  28%           { transform: translateY(-9px); color: #fff; }
 }
 
 /* ── Divider ── */
