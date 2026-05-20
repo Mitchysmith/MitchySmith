@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="styles/tasks.css" />
   <link rel="stylesheet" href="styles/calendar.css" />
   <link rel="stylesheet" href="styles/finance.css" />
-  <link rel="stylesheet" href="styles/exercise.css" />
+  <link rel="stylesheet" href="styles/learn.css" />
   <link rel="stylesheet" href="styles/mail.css" />
   <link rel="stylesheet" href="styles/perplexity.css" />
   <link rel="stylesheet" href="styles/work.css" />
@@ -49,9 +49,9 @@
           <span class="nav-icon">&#128176;</span>
           <span class="nav-label">Finance</span>
         </li>
-        <li class="nav-item" data-section="exercise">
-          <span class="nav-icon">&#128170;</span>
-          <span class="nav-label">Exercise</span>
+        <li class="nav-item" data-section="learn">
+          <span class="nav-icon">&#128200;</span>
+          <span class="nav-label">Markets</span>
         </li>
         <li class="nav-item" data-section="mail">
           <span class="nav-icon">&#9993;</span>
@@ -83,26 +83,47 @@
           <div class="pac-arcade-row">
             <div class="pac-score-block">
               <div class="pac-player-lbl">1UP</div>
-              <div class="pac-score-num" id="pac-score">0000</div>
+              <div class="pac-score-num" id="pac-score">00000</div>
+            </div>
+            <div class="pac-score-block" style="text-align:center">
+              <div class="pac-player-lbl">LEVEL</div>
+              <div class="pac-score-num" style="color:#fff">1</div>
             </div>
             <div class="pac-score-block" style="text-align:right">
               <div class="pac-player-lbl">HI-SCORE</div>
-              <div class="pac-score-num" style="color:#fff">3620</div>
+              <div class="pac-score-num" style="color:#fff">24680</div>
             </div>
           </div>
 
+          <div class="pac-ready-txt">— READY! —</div>
+
           <div class="pac-lane">
-            <div class="pac-ghost"></div>
+            <div class="pac-ghost blinky"></div>
+            <div class="pac-ghost pinky"></div>
+            <div class="pac-ghost inky"></div>
             <div class="pacman"></div>
             <div class="dots">
-              <span></span><span></span><span></span>
+              <span></span><span></span>
               <span class="power-dot"></span>
               <span></span><span></span><span></span>
+              <span></span><span></span>
+              <span class="power-dot"></span>
+              <span></span>
             </div>
+          </div>
+
+          <div class="pac-status-row">
+            <div class="pac-lives-group">
+              <span class="pac-lbl">LIVES</span>
+              <div class="pac-life"></div>
+              <div class="pac-life"></div>
+              <div class="pac-life"></div>
+            </div>
+            <div class="pac-insert-coin">● INSERT COIN ●</div>
           </div>
 
           <div class="pac-loading-text">
-            <span style="--i:0">L</span><span style="--i:1">O</span><span style="--i:2">A</span><span style="--i:3">D</span><span style="--i:4">I</span><span style="--i:5">N</span><span style="--i:6">G</span>
+            <span style="--i:0">D</span><span style="--i:1">A</span><span style="--i:2">S</span><span style="--i:3">H</span><span style="--i:4">B</span><span style="--i:5">O</span><span style="--i:6">A</span><span style="--i:7">R</span><span style="--i:8">D</span>
           </div>
         </div>
       </div>
@@ -112,7 +133,7 @@
       <div id="section-tasks"      class="section"></div>
       <div id="section-calendar"   class="section"></div>
       <div id="section-finance"    class="section"></div>
-      <div id="section-exercise"   class="section"></div>
+      <div id="section-learn"       class="section"></div>
       <div id="section-mail"       class="section"></div>
       <div id="section-work"       class="section"></div>
       <div id="section-perplexity" class="section"></div>
@@ -128,7 +149,7 @@
   <script src="js/tasks.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/finance.js"></script>
-  <script src="js/exercise.js"></script>
+  <script src="js/learn.js"></script>
   <script src="js/mail.js"></script>
   <script src="js/perplexity.js"></script>
   <script src="js/work.js"></script>
