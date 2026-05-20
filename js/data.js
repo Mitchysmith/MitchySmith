@@ -3,13 +3,9 @@ const DB = {
   _key: 'mitchDashboard',
 
   defaults: {
-    tasks: [
-      { id: 1, text: 'Review monthly budget', done: false, priority: 'high',  month: new Date().getMonth() },
-      { id: 2, text: 'Book dentist appointment', done: false, priority: 'med', month: new Date().getMonth() },
-      { id: 3, text: 'Plan weekend meals', done: false, priority: 'low',  month: new Date().getMonth() },
-      { id: 4, text: 'Call insurance provider', done: false, priority: 'high', month: new Date().getMonth() },
-      { id: 5, text: 'Update investment tracker', done: false, priority: 'med', month: new Date().getMonth() },
-    ],
+    tasks: [],
+    shopping: [],
+    householdMembers: [],
     events: [],
     finance: {
       income: 0, expenses: 0, savings: 0, investments: 0,
