@@ -10,11 +10,14 @@
   <link rel="stylesheet" href="styles/tasks.css" />
   <link rel="stylesheet" href="styles/calendar.css" />
   <link rel="stylesheet" href="styles/finance.css" />
-  <link rel="stylesheet" href="styles/cooking.css" />
-  <link rel="stylesheet" href="styles/exercise.css" />
+  <link rel="stylesheet" href="styles/learn.css" />
+  <link rel="stylesheet" href="styles/mail.css" />
   <link rel="stylesheet" href="styles/perplexity.css" />
+  <link rel="stylesheet" href="styles/work.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Microsoft Authentication Library -->
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -46,13 +49,18 @@
           <span class="nav-icon">&#128176;</span>
           <span class="nav-label">Finance</span>
         </li>
-        <li class="nav-item" data-section="cooking">
-          <span class="nav-icon">&#127859;</span>
-          <span class="nav-label">Cooking</span>
+        <li class="nav-item" data-section="learn">
+          <span class="nav-icon">&#128200;</span>
+          <span class="nav-label">Markets</span>
         </li>
-        <li class="nav-item" data-section="exercise">
-          <span class="nav-icon">&#128170;</span>
-          <span class="nav-label">Exercise</span>
+        <li class="nav-item" data-section="mail">
+          <span class="nav-icon">&#9993;</span>
+          <span class="nav-label">Snail Mail</span>
+          <span class="nav-badge" id="mail-nav-badge" style="display:none"></span>
+        </li>
+        <li class="nav-item" data-section="work">
+          <span class="nav-icon">&#128188;</span>
+          <span class="nav-label">Work</span>
         </li>
         <li class="nav-item perplexity-nav" data-section="perplexity">
           <span class="nav-icon">&#10024;</span>
@@ -71,22 +79,43 @@
 
       <!-- Loading overlay -->
       <div class="loader-overlay" id="loader">
-        <div class="pacman-wrap">
-          <div class="pacman"></div>
-          <div class="dots">
-            <span></span><span></span><span></span><span></span>
+        <div class="bird-scene">
+          <div class="bird-title">✦ YOUR DASHBOARD ✦</div>
+          <div class="bird-subtitle">Fetching your world…</div>
+          <div class="bird-lane">
+            <div class="bird-crumb"></div>
+            <div class="bird-crumb"></div>
+            <div class="bird-crumb"></div>
+            <div class="bird-crumb"></div>
+            <div class="bird-crumb"></div>
+            <div class="bird-crumb"></div>
+            <div class="bird-crumb"></div>
+            <div class="bird-figure">
+              <div class="bird-tail"></div>
+              <div class="bird-body"></div>
+              <div class="bird-breast"></div>
+              <div class="bird-wing"></div>
+              <div class="bird-head"></div>
+              <div class="bird-eye"></div>
+              <div class="bird-beak"></div>
+              <div class="bird-feet">
+                <div class="bird-foot fl"></div>
+                <div class="bird-foot fr"></div>
+              </div>
+            </div>
           </div>
+          <div class="bird-msg">Loading<span class="bird-dot" style="--d:0">.</span><span class="bird-dot" style="--d:1">.</span><span class="bird-dot" style="--d:2">.</span></div>
         </div>
-        <p class="loader-text">Loading your dashboard…</p>
       </div>
 
-      <!-- Sections injected by JS -->
-      <div id="section-home" class="section active"></div>
-      <div id="section-tasks" class="section"></div>
-      <div id="section-calendar" class="section"></div>
-      <div id="section-finance" class="section"></div>
-      <div id="section-cooking" class="section"></div>
-      <div id="section-exercise" class="section"></div>
+      <!-- Sections -->
+      <div id="section-home"       class="section active"></div>
+      <div id="section-tasks"      class="section"></div>
+      <div id="section-calendar"   class="section"></div>
+      <div id="section-finance"    class="section"></div>
+      <div id="section-learn"       class="section"></div>
+      <div id="section-mail"       class="section"></div>
+      <div id="section-work"       class="section"></div>
       <div id="section-perplexity" class="section"></div>
 
     </main>
@@ -100,9 +129,10 @@
   <script src="js/tasks.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/finance.js"></script>
-  <script src="js/cooking.js"></script>
-  <script src="js/exercise.js"></script>
+  <script src="js/learn.js"></script>
+  <script src="js/mail.js"></script>
   <script src="js/perplexity.js"></script>
+  <script src="js/work.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
