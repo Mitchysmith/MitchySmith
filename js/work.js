@@ -2,7 +2,7 @@
 
 const WORK_LISTS = {
   daily:      { label: 'Daily',         icon: '☀️', color: 'var(--orange)' },
-  longterm:   { label: 'Long Term',     icon: '🗂️', color: 'var(--blue)'   },
+  longterm:   { label: 'Projects',       icon: '🗂️', color: 'var(--blue)'   },
   onboarding: { label: 'Onboarding',    icon: '🚀', color: 'var(--green)'  },
   panel:      { label: 'Panel Reviews', icon: '📋', color: '#c084fc'       },
 };
@@ -29,6 +29,8 @@ function initWork() {
   if (!window.state.work) window.state.work = {};
   Object.keys(WORK_LISTS).forEach(k => {
     if (!window.state.work[k]) window.state.work[k] = [];
+    // Migrate: ensure all existing tasks have a completions array
+    window.state.work[k].forEach(t => { if (!t.completions) t.completions = []; });
   });
 }
 
@@ -332,12 +334,31 @@ function buildTasksPanel() {
           </div>
           <ul class="work-list" id="wlist-${key}"></ul>
         </div>`).join('')}
+    </div>
+
+    <!-- ── Task Repository ── -->
+    <div class="work-repo-section" style="margin-top:24px">
+      <div class="work-repo-header" onclick="toggleRepoSection()">
+        <span class="repo-arrow">▶</span>
+        <span>🗃 Task Repository</span>
+        <span class="repo-count-badge" id="repo-count-badge">0 records</span>
+        <span class="repo-header-hint">completed tasks · searchable · re-addable</span>
+      </div>
+      <div class="work-repo-body" id="work-repo-body">
+        <div class="work-repo-search-row">
+          <input type="text" id="work-repo-search" placeholder="🔍  Search completed tasks to re-add…" class="work-text-input" />
+        </div>
+        <div id="work-repo-list"></div>
+      </div>
     </div>`;
 
   Object.keys(WORK_LISTS).forEach(key => {
     const inp = document.getElementById(`winput-${key}`);
     if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') addWorkTask(key); });
   });
+
+  const repoSearch = document.getElementById('work-repo-search');
+  if (repoSearch) repoSearch.addEventListener('input', refreshRepository);
 
   refreshAllWorkLists();
 }
@@ -417,9 +438,10 @@ function addWorkTask(listKey) {
     priority: document.getElementById(`wpri-${listKey}`)?.value || 'med',
     duration: +(document.getElementById(`wdur-${listKey}`)?.value || 30),
     deadline: document.getElementById(`wdl-${listKey}`)?.value || '',
-    done:     false,
-    comments: [],
-    created:  Date.now(),
+    done:        false,
+    comments:    [],
+    completions: [],
+    created:     Date.now(),
   });
   saveState();
   if (input) input.value = '';
@@ -432,10 +454,15 @@ function toggleWorkDone(listKey, id) {
   const task = (window.state.work[listKey] || []).find(t => t.id === id);
   if (!task) return;
   task.done = !task.done;
+  if (task.done) {
+    if (!task.completions) task.completions = [];
+    task.completions.push({ ts: Date.now(), year: new Date().getFullYear() });
+  }
   saveState();
   refreshWorkList(listKey);
   refreshWorkCount(listKey);
   refreshSummary();
+  refreshRepository();
 }
 
 function deleteWorkTask(listKey, id) {
@@ -488,6 +515,7 @@ function refreshAllWorkLists() {
     refreshWorkCount(key);
   });
   refreshSummary();
+  refreshRepository();
 }
 
 function refreshWorkCount(listKey) {
@@ -652,6 +680,149 @@ function planMyDay() {
         <div class="dpd-title">⏭ Not enough time today (${missed.length} deferred):</div>
         ${missed.map(t => `<div class="dpd-item">· ${escWH(t.text)} <span>(${WORK_DURATIONS.find(d => d.val === t.duration)?.label || t.duration + 'm'})</span></div>`).join('')}
       </div>` : ''}`);
+}
+
+// ═══════════════════════════════════════════════════
+// TASK REPOSITORY
+// ═══════════════════════════════════════════════════
+
+function toggleRepoSection() {
+  const body  = document.getElementById('work-repo-body');
+  const arrow = document.querySelector('.repo-arrow');
+  if (body)  body.classList.toggle('open');
+  if (arrow) arrow.classList.toggle('open');
+}
+
+function getAllCompletedTasks() {
+  const out = [];
+  Object.entries(WORK_LISTS).forEach(([key, meta]) => {
+    (window.state.work[key] || []).forEach(t => {
+      if ((t.completions?.length || 0) > 0) {
+        out.push({ ...t, listKey: key, listLabel: meta.label, listColor: meta.color, listIcon: meta.icon });
+      }
+    });
+  });
+  return out;
+}
+
+function refreshRepository() {
+  const listEl  = document.getElementById('work-repo-list');
+  const badgeEl = document.getElementById('repo-count-badge');
+  if (!listEl) return;
+
+  const search   = document.getElementById('work-repo-search')?.value.trim().toLowerCase() || '';
+  const allDone  = getAllCompletedTasks();
+  const filtered = search ? allDone.filter(t => t.text.toLowerCase().includes(search)) : allDone;
+
+  // Sort by most recently completed
+  filtered.sort((a, b) => {
+    const aLast = Math.max(...(a.completions?.map(c => c.ts) || [0]));
+    const bLast = Math.max(...(b.completions?.map(c => c.ts) || [0]));
+    return bLast - aLast;
+  });
+
+  if (badgeEl) badgeEl.textContent = `${allDone.length} record${allDone.length !== 1 ? 's' : ''}`;
+
+  if (!filtered.length) {
+    listEl.innerHTML = search
+      ? `<div class="repo-empty">No completed tasks match "<strong>${escWH(search)}</strong>".</div>`
+      : `<div class="repo-empty">No completed tasks yet. Tick off a task and it will appear here.</div>`;
+    return;
+  }
+
+  const thisYear = new Date().getFullYear();
+
+  listEl.innerHTML = filtered.map(t => {
+    const yearCount  = (t.completions || []).filter(c => c.year === thisYear).length;
+    const totalCount = (t.completions || []).length;
+    const lastTs     = t.completions?.length ? Math.max(...t.completions.map(c => c.ts)) : null;
+    const lastStr    = lastTs ? timeSince(new Date(lastTs)) : '—';
+    const dur        = WORK_DURATIONS.find(d => d.val === t.duration)?.label || `${t.duration || '?'}m`;
+
+    return `
+      <div class="repo-item">
+        <div class="repo-item-main">
+          <div class="repo-item-info">
+            <span class="repo-task-text">${escWH(t.text)}</span>
+            <span class="wt-list-badge" style="background:${t.listColor}20;color:${t.listColor};margin-left:8px">${t.listIcon} ${t.listLabel}</span>
+            <span class="work-dur-badge" style="margin-left:4px">${dur}</span>
+          </div>
+          <div class="repo-item-stats">
+            <div class="repo-stat-block">
+              <span class="repo-stat-val ${yearCount > 1 ? 'highlight' : ''}">${yearCount}</span>
+              <span class="repo-stat-lbl">times in ${thisYear}</span>
+            </div>
+            <div class="repo-stat-block">
+              <span class="repo-stat-val">${totalCount}</span>
+              <span class="repo-stat-lbl">all time</span>
+            </div>
+            <span class="repo-stat-last">Last: ${lastStr}</span>
+          </div>
+          <div class="repo-readd-group">
+            <select class="work-select" id="repo-target-${t.id}">
+              ${Object.entries(WORK_LISTS).map(([k, m]) =>
+                `<option value="${k}" ${k === t.listKey ? 'selected' : ''}>${m.icon} ${m.label}</option>`
+              ).join('')}
+            </select>
+            <button class="repo-readd-btn" id="repo-readd-${t.id}"
+                    onclick="reAddTask('${t.listKey}','${t.id}')">↩ Re-add</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function reAddTask(sourceListKey, sourceId) {
+  const sourceTask   = (window.state.work[sourceListKey] || []).find(t => t.id === sourceId);
+  if (!sourceTask) return;
+
+  const targetListKey = document.getElementById(`repo-target-${sourceId}`)?.value || sourceListKey;
+  if (!window.state.work[targetListKey]) window.state.work[targetListKey] = [];
+
+  window.state.work[targetListKey].push({
+    id:          'w_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    text:        sourceTask.text,
+    priority:    sourceTask.priority,
+    duration:    sourceTask.duration,
+    deadline:    '',
+    done:        false,
+    comments:    [],
+    completions: [...(sourceTask.completions || [])], // inherit history
+    created:     Date.now(),
+  });
+  saveState();
+  refreshWorkList(targetListKey);
+  refreshWorkCount(targetListKey);
+  refreshSummary();
+
+  // Switch to tasks tab if not already there
+  if (workTopTab !== 'tasks') {
+    workTopTab = 'tasks';
+    document.querySelectorAll('.work-top-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.work-top-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-tab="tasks"]')?.classList.add('active');
+    document.getElementById('wtp-tasks')?.classList.add('active');
+  }
+
+  const btn = document.getElementById(`repo-readd-${sourceId}`);
+  if (btn) {
+    btn.textContent = `Added to ${WORK_LISTS[targetListKey].label} ✓`;
+    btn.style.cssText = 'background:var(--green);color:#fff;border-color:var(--green)';
+    setTimeout(() => {
+      btn.textContent = '↩ Re-add';
+      btn.style.cssText = '';
+    }, 2500);
+  }
+}
+
+function timeSince(date) {
+  const secs = Math.round((Date.now() - date) / 1000);
+  if (secs < 60)    return 'just now';
+  if (secs < 3600)  return `${Math.round(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.round(secs / 3600)}h ago`;
+  const days = Math.round(secs / 86400);
+  if (days < 7)     return `${days}d ago`;
+  return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
 function showDayPlanModal(html) {
