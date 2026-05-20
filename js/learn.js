@@ -131,6 +131,9 @@ function _renderRates() {
 async function _fetchNews() {
   const RSS2J = 'https://api.rss2json.com/v1/api.json?rss_url=';
   const FEEDS = [
+    { url: 'https://www.afr.com/rss',                                             src: 'AFR'          },
+    { url: 'https://www.afr.com/markets.rss',                                     src: 'AFR'          },
+    { url: 'https://www.afr.com/companies.rss',                                   src: 'AFR'          },
     { url: 'https://www.abc.net.au/news/feed/51120/rss.xml',                      src: 'ABC News'     },
     { url: 'https://www.theguardian.com/australia-news/business/rss',             src: 'The Guardian' },
     { url: 'https://feeds.reuters.com/reuters/businessNews',                      src: 'Reuters'      },
@@ -154,7 +157,7 @@ async function _fetchNews() {
     if (!k || seen.has(k)) return false;
     seen.add(k);
     return true;
-  }).slice(0, 40);
+  }).slice(0, 60);
 
   _renderNews();
 }
@@ -227,7 +230,7 @@ function _renderNews() {
       <div class="learn-card learn-sent-${sentiment}">
         <div class="learn-card-hdr">
           <div class="learn-card-meta">
-            <span class="learn-src-badge">${item._src || 'News'}</span>
+            <span class="learn-src-badge" data-src="${item._src || ''}">${item._src || 'News'}</span>
             <span class="learn-ago">${ago}</span>
             ${tags.map(t => `<span class="learn-tag learn-tag-${t.toLowerCase()}">${t}</span>`).join('')}
           </div>

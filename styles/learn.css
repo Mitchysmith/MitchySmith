@@ -97,6 +97,10 @@
   padding: 2px 8px;
   border-radius: 20px;
 }
+.learn-src-badge[data-src="AFR"] {
+  color: #ff8c69;
+  background: rgba(255,140,105,0.12);
+}
 .learn-ago { font-size: 11px; color: var(--text-dim); }
 
 .learn-tag {
