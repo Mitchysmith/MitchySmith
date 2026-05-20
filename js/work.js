@@ -50,6 +50,7 @@ function initWork() {
       if (!t.subtasks)    t.subtasks    = [];
     });
   });
+  if (!window.state.work.reminders) window.state.work.reminders = [];
 }
 
 function checkAndResetRecurring(listKey) {
@@ -384,6 +385,21 @@ function buildTasksPanel() {
         </div>`).join('')}
     </div>
 
+    <!-- ── Follow-up Reminders ── -->
+    <div class="work-widget work-widget-followup" style="margin-top:20px">
+      <div class="work-widget-hdr">
+        <span class="wwh-title" style="color:var(--blue)">💬 Follow-ups</span>
+        <span class="work-tab-count" id="wcount-reminders" style="background:var(--blue-glow);color:var(--blue)">0</span>
+        <span class="wwh-sub">People you need to chase for an update</span>
+      </div>
+      <div class="work-add-row followup-add-row" style="margin-top:14px">
+        <input type="text" id="wrem-name"   placeholder="Who — e.g. John Smith"        class="work-text-input followup-name-input" />
+        <input type="text" id="wrem-detail" placeholder="What about — e.g. Q2 budget"  class="work-text-input followup-detail-input" />
+        <button class="btn btn-primary" onclick="addReminder()">Add</button>
+      </div>
+      <ul class="work-list followup-list" id="wlist-reminders"></ul>
+    </div>
+
     <!-- ── Task Repository ── -->
     <div class="work-repo-section" style="margin-top:24px">
       <div class="work-repo-header" onclick="toggleRepoSection()">
@@ -408,7 +424,11 @@ function buildTasksPanel() {
   const repoSearch = document.getElementById('work-repo-search');
   if (repoSearch) repoSearch.addEventListener('input', refreshRepository);
 
+  document.getElementById('wrem-detail')?.addEventListener('keydown', e => { if (e.key === 'Enter') addReminder(); });
+  document.getElementById('wrem-name')?.addEventListener('keydown',   e => { if (e.key === 'Enter') document.getElementById('wrem-detail')?.focus(); });
+
   refreshAllWorkLists();
+  refreshReminderList();
 }
 
 function generateInlinePlan() {
@@ -1017,6 +1037,77 @@ function _runDayPlan() {
         <div class="dpd-title">⏭ Not enough time today — ${missed.length} deferred (click ⇄ Swap on any slot to bring one in):</div>
         ${missed.map(t => `<div class="dpd-item">· ${escWH(t.text)} <span>${durLabel(t)} · ${t.listLabel}</span></div>`).join('')}
       </div>` : ''}`);
+}
+
+// ═══════════════════════════════════════════════════
+// FOLLOW-UP REMINDERS
+// ═══════════════════════════════════════════════════
+
+function addReminder() {
+  const nameEl   = document.getElementById('wrem-name');
+  const detailEl = document.getElementById('wrem-detail');
+  const name     = nameEl?.value.trim();
+  const detail   = detailEl?.value.trim();
+  if (!name) { nameEl?.focus(); return; }
+
+  if (!window.state.work.reminders) window.state.work.reminders = [];
+  window.state.work.reminders.push({
+    id:      'wrem_' + Date.now(),
+    name,
+    detail,
+    done:    false,
+    created: Date.now(),
+  });
+  saveState();
+  if (nameEl)   nameEl.value   = '';
+  if (detailEl) detailEl.value = '';
+  refreshReminderList();
+}
+
+function toggleReminderDone(id) {
+  const rem = (window.state.work.reminders || []).find(r => r.id === id);
+  if (!rem) return;
+  rem.done = !rem.done;
+  saveState();
+  refreshReminderList();
+}
+
+function deleteReminder(id) {
+  window.state.work.reminders = (window.state.work.reminders || []).filter(r => r.id !== id);
+  saveState();
+  refreshReminderList();
+}
+
+function refreshReminderList() {
+  const ul      = document.getElementById('wlist-reminders');
+  const countEl = document.getElementById('wcount-reminders');
+  if (!ul) return;
+
+  const reminders = window.state.work.reminders || [];
+  const pending   = reminders.filter(r => !r.done);
+  if (countEl) countEl.textContent = pending.length;
+
+  if (!reminders.length) {
+    ul.innerHTML = `<li class="task-list-empty">No follow-ups yet — add someone above.</li>`;
+    return;
+  }
+
+  const sorted = [...reminders].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    return a.created - b.created;
+  });
+
+  ul.innerHTML = sorted.map(r => `
+    <li class="followup-item ${r.done ? 'done' : ''}" id="frem-${r.id}">
+      <div class="task-check ${r.done ? 'checked' : ''}" onclick="toggleReminderDone('${r.id}')">
+        ${r.done ? '<span>✓</span>' : ''}
+      </div>
+      <div class="followup-body">
+        <span class="followup-name">${escWH(r.name)}</span>
+        ${r.detail ? `<span class="followup-detail">${escWH(r.detail)}</span>` : ''}
+      </div>
+      <button class="task-action-btn delete" onclick="deleteReminder('${r.id}')">Delete</button>
+    </li>`).join('');
 }
 
 // ═══════════════════════════════════════════════════

@@ -31,6 +31,7 @@ const DB = {
       onboarding: [],
       panel:      [],
       personal:   [],
+      reminders:  [],
     },
   },
 
