@@ -72,24 +72,46 @@ async function refreshLearnData() {
 async function _fetchRates() {
   const grid = document.getElementById('learn-fx-grid');
   try {
+    const to = LEARN_CURRENCIES.join(',');
+
+    // Today's rates — reliable, free, no key
     const data = await fetch('https://open.er-api.com/v6/latest/AUD').then(r => r.json());
     if (data.result !== 'success') throw new Error('bad response');
+    const todayRates = data.rates;
 
-    const today        = new Date().toISOString().slice(0, 10);
-    const latestStored = JSON.parse(localStorage.getItem('_fxLatest') || 'null');
+    // Yesterday's rates for day-over-day arrows — try frankfurter historical endpoint
+    let prevRates = null;
+    try {
+      const yday  = _prevWorkDay();
+      const yData = await fetch(`https://api.frankfurter.app/${yday}?from=AUD&to=${to}`).then(r => r.json());
+      if (yData.rates) prevRates = yData.rates;
+    } catch { /* non-fatal */ }
 
-    // When the day rolls over, promote yesterday's snapshot to "prev" for comparison
-    if (latestStored && latestStored.date !== today) {
-      localStorage.setItem('_fxPrev', JSON.stringify(latestStored));
+    // Fall back to cached snapshot if frankfurter failed
+    if (!prevRates) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const cached   = JSON.parse(localStorage.getItem('_fxLatest') || 'null');
+      if (cached && cached.date !== todayStr) prevRates = cached.rates;
     }
-    localStorage.setItem('_fxLatest', JSON.stringify({ rates: data.rates, date: today }));
 
-    const prevStored = JSON.parse(localStorage.getItem('_fxPrev') || 'null');
-    _learnRates = { today: data.rates, prev: prevStored?.rates || null };
+    // Always save today so tomorrow's visit has a comparison
+    localStorage.setItem('_fxLatest', JSON.stringify({
+      rates: todayRates,
+      date: new Date().toISOString().slice(0, 10),
+    }));
+
+    _learnRates = { today: todayRates, prev: prevRates };
     _renderRates();
   } catch {
     if (grid) grid.innerHTML = `<div class="learn-error">⚠ Could not fetch rates — check your connection.</div>`;
   }
+}
+
+function _prevWorkDay() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 function _renderRates() {
@@ -131,25 +153,22 @@ function _renderRates() {
 
 async function _fetchNews() {
   const RSS2J = 'https://api.rss2json.com/v1/api.json?rss_url=';
+  // Sequential fetching — rss2json free tier allows ~1 req/sec; parallel requests get rate-limited
   const FEEDS = [
-    { url: 'https://www.afr.com/rss',                                             src: 'AFR'          },
-    { url: 'https://www.afr.com/markets.rss',                                     src: 'AFR'          },
-    { url: 'https://www.afr.com/companies.rss',                                   src: 'AFR'          },
-    { url: 'https://www.abc.net.au/news/feed/51120/rss.xml',                      src: 'ABC News'     },
-    { url: 'https://www.theguardian.com/australia-news/business/rss',             src: 'The Guardian' },
-    { url: 'https://feeds.reuters.com/reuters/businessNews',                      src: 'Reuters'      },
+    { url: 'https://www.afr.com/rss',                                          src: 'AFR'          },
+    { url: 'https://stockhead.com.au/feed/',                                   src: 'Stockhead'    },
+    { url: 'https://www.abc.net.au/news/feed/51120/rss.xml',                   src: 'ABC News'     },
+    { url: 'https://www.theguardian.com/australia-news/business/rss',          src: 'The Guardian' },
   ];
 
-  const results = await Promise.allSettled(
-    FEEDS.map(f =>
-      fetch(RSS2J + encodeURIComponent(f.url))
-        .then(r => r.json())
-        .then(j => (j.items || []).map(item => ({ ...item, _src: f.src })))
-    )
-  );
-
   const all = [];
-  results.forEach(r => { if (r.status === 'fulfilled') all.push(...r.value); });
+  for (const f of FEEDS) {
+    try {
+      const j = await fetch(RSS2J + encodeURIComponent(f.url)).then(r => r.json());
+      if (j.items) all.push(...j.items.map(item => ({ ...item, _src: f.src })));
+    } catch { /* skip failed feed */ }
+    await new Promise(res => setTimeout(res, 350));
+  }
   all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
   const seen = new Set();
@@ -183,6 +202,19 @@ function _tags(text) {
   return tags;
 }
 
+function _isMarketRelevant(text) {
+  const lw = (text || '').toLowerCase();
+  return (
+    /\basx\b|\bstocks?\b|\bshares?\b|\bdividend|\bearnings?\b|\bprofit\b|\brevenue\b|\bipo\b|\blisted\b|\bequit/.test(lw) ||
+    /\bfund\b|\betf\b|\bbond[s ]|\bportfolio\b|\bmerger\b|\bacquisition\b|\btakeover\b|\bbuyout\b/.test(lw) ||
+    /\bgdp\b|\bcpi\b|\binflation|\binterest rate|\bcash rate|\brba\b|\breserve bank\b|federal reserve|\bfed \b|monetary policy/.test(lw) ||
+    /\baud\b|\busd\b|exchange rate|\bforex\b|\bcurrenc/.test(lw) ||
+    /\bgold\b|\biron ore|\bcopper\b|\boil\b|\bcoal\b|\bcommodit|\bmining\b|\bresources?\b/.test(lw) ||
+    /wall street|\bnasdaq\b|\bs&p|\bftse\b|\bnikkei\b|trade war|\btariff|\bsanction|\bimf\b/.test(lw) ||
+    /\bbank\b|\bfinancial results\b|\bhalf.year\b|\bfull.year\b|\bannual report\b|\bguidance\b|\boutlook\b|\bforecast\b|\bdowngrade\b|\bupgrade\b/.test(lw)
+  );
+}
+
 function _keyNote(desc) {
   if (!desc) return '';
   const plain = desc.replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
@@ -204,13 +236,17 @@ function _renderNews() {
   const SENT_ICON  = { positive:'📈', negative:'📉', neutral:'➡️' };
   const SENT_LABEL = { positive:'Bullish',  negative:'Bearish', neutral:'Neutral' };
 
-  let items = _learnNews;
+  // Base: always market-relevant only
+  let items = _learnNews.filter(item =>
+    _isMarketRelevant((item.title || '') + ' ' + (item.description || ''))
+  );
+
   if (_learnFilter !== 'all') {
-    items = _learnNews.filter(item => {
+    items = items.filter(item => {
       const combined = ((item.title || '') + ' ' + (item.description || '')).toLowerCase();
-      if (_learnFilter === 'asx')   return /\basx\b|\bstock\b|\bshares?\b|\bdividend\b/.test(combined);
-      if (_learnFilter === 'aud')   return /\baud\b|\baustralian dollar\b|\baussie\b/.test(combined);
-      if (_learnFilter === 'macro') return /\brba\b|\breserve bank\b|\binterest rate\b|\binflation\b|\bgdp\b/.test(combined);
+      if (_learnFilter === 'asx')   return /\basx\b|\bstocks?\b|\bshares?\b|\bdividend\b|\bearnings?\b|\bprofit\b/.test(combined);
+      if (_learnFilter === 'aud')   return /\baud\b|\baustralian dollar\b|\baussie\b|\bfx\b|\bexchange rate\b/.test(combined);
+      if (_learnFilter === 'macro') return /\brba\b|\breserve bank\b|\binterest rate\b|\binflation\b|\bgdp\b|\bcpi\b/.test(combined);
       return true;
     });
   }
