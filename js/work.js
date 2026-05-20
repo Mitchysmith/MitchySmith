@@ -34,6 +34,11 @@ const LUNCH_DURATION      = 30;
 let workTopTab      = 'summary';
 let workTableFilter = 'all';
 
+// Plan My Day swap state
+let _planForcedIds  = new Set();
+let _planExcludeIds = new Set();
+let _swapOpenId     = null;
+
 function initWork() {
   if (!window.state.work) window.state.work = {};
   Object.keys(WORK_LISTS).forEach(k => {
@@ -850,6 +855,34 @@ function refreshWorkList(listKey) {
 // ═══════════════════════════════════════════════════
 
 function planMyDay() {
+  _planForcedIds.clear();
+  _planExcludeIds.clear();
+  _swapOpenId = null;
+  _runDayPlan();
+}
+
+function resetDayPlan() {
+  _planForcedIds.clear();
+  _planExcludeIds.clear();
+  _swapOpenId = null;
+  _runDayPlan();
+}
+
+function openPlanSwap(taskId) {
+  _swapOpenId = _swapOpenId === taskId ? null : taskId;
+  _runDayPlan();
+}
+
+function executePlanSwap(outId, inId) {
+  _planForcedIds.add(inId);
+  _planForcedIds.delete(outId);
+  _planExcludeIds.add(outId);
+  _planExcludeIds.delete(inId);
+  _swapOpenId = null;
+  _runDayPlan();
+}
+
+function _runDayPlan() {
   const allTasks  = [];
   const listOrder = { daily: 0, onboarding: 1, panel: 2, longterm: 3, personal: 4 };
   const priOrder  = { high: 0, med: 1, low: 2 };
@@ -861,18 +894,15 @@ function planMyDay() {
       if (undoneSteps.length > 0) {
         const stepDur = Math.max(15, Math.round(t.duration / undoneSteps.length));
         undoneSteps.forEach(s => {
+          const synId = `${t.id}_${s.id}`;
+          if (_planExcludeIds.has(synId)) return;
           allTasks.push({
-            ...t,
-            id:         `${t.id}_${s.id}`,
-            text:       s.text,
-            parentText: t.text,
-            duration:   stepDur,
-            listKey:    key,
-            listLabel:  meta.label,
-            isStep:     true,
+            ...t, id: synId, text: s.text, parentText: t.text,
+            duration: stepDur, listKey: key, listLabel: meta.label, isStep: true,
           });
         });
       } else {
+        if (_planExcludeIds.has(t.id)) return;
         allTasks.push({ ...t, listKey: key, listLabel: meta.label });
       }
     });
@@ -893,6 +923,10 @@ function planMyDay() {
   }
 
   allTasks.sort((a, b) => {
+    // User-forced tasks go first
+    const af = _planForcedIds.has(a.id) ? -1 : 0;
+    const bf = _planForcedIds.has(b.id) ? -1 : 0;
+    if (af !== bf) return af - bf;
     const ld = (listOrder[a.listKey] ?? 3) - (listOrder[b.listKey] ?? 3);
     if (ld !== 0) return ld;
     const pd = (priOrder[a.priority] ?? 1) - (priOrder[b.priority] ?? 1);
@@ -925,9 +959,12 @@ function planMyDay() {
     return `${hh}:${min.toString().padStart(2, '0')} ${ampm}`;
   };
 
+  const durLabel = t => WORK_DURATIONS.find(d => d.val === t.duration)?.label || t.duration + 'm';
+
   const totalMins = slots.filter(s => !s.isBreak).reduce((n, s) => n + s.duration, 0);
   const hrs  = Math.floor(totalMins / 60);
   const mins = totalMins % 60;
+  const hasOverrides = _planForcedIds.size || _planExcludeIds.size;
 
   showDayPlanModal(`
     <div class="day-plan-header">
@@ -935,7 +972,10 @@ function planMyDay() {
         <div class="dp-title">⚡ Today's Plan</div>
         <div class="dp-subtitle">${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })} · ${hrs}h${mins > 0 ? ` ${mins}m` : ''} of work</div>
       </div>
-      <button class="dp-close-btn" onclick="closeDayPlan()">✕</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${hasOverrides ? `<button class="dp-reset-btn" onclick="resetDayPlan()">↺ Reset</button>` : ''}
+        <button class="dp-close-btn" onclick="closeDayPlan()">✕</button>
+      </div>
     </div>
     <div class="day-plan-schedule">
       ${slots.map(s => s.isBreak
@@ -943,24 +983,39 @@ function planMyDay() {
              <span class="dp-time">${toTime(s.start)} – ${toTime(s.end)}</span>
              <span>🍽 Lunch break</span>
            </div>`
-        : `<div class="day-plan-slot">
+        : `<div class="day-plan-slot ${_swapOpenId === s.id ? 'swap-active' : ''} ${_planForcedIds.has(s.id) ? 'swap-forced' : ''}">
              <span class="dp-time">${toTime(s.start)} – ${toTime(s.end)}</span>
              <div class="dp-task-info">
                <span class="dp-task-name">${escWH(s.text)}</span>
                <span class="dp-task-meta">
-                 ${s.isStep ? `<span class="dp-step-parent">📂 ${escWH(s.parentText)}</span> · ` : ''}${s.listLabel} · ${WORK_DURATIONS.find(d => d.val === s.duration)?.label || s.duration + 'm'}
+                 ${s.isStep ? `<span class="dp-step-parent">📂 ${escWH(s.parentText)}</span> · ` : ''}${s.listLabel} · ${durLabel(s)}
                </span>
              </div>
              <span class="task-priority pri-${s.priority === 'high' ? 'high' : s.priority === 'med' ? 'med' : 'low'}">
                ${s.priority === 'high' ? 'High' : s.priority === 'med' ? 'Med' : 'Low'}
              </span>
-           </div>`
+             <button class="dp-swap-btn ${_swapOpenId === s.id ? 'active' : ''}"
+                     onclick="openPlanSwap('${s.id}')" title="Swap this task for another">⇄ Swap</button>
+           </div>
+           ${_swapOpenId === s.id ? `
+           <div class="plan-swap-panel">
+             <div class="plan-swap-title">Replace with a deferred task:</div>
+             ${missed.length
+               ? missed.map(m => `
+                   <button class="plan-swap-opt" onclick="executePlanSwap('${s.id}','${m.id}')">
+                     <span class="plan-swap-opt-name">${escWH(m.text)}</span>
+                     <span class="plan-swap-opt-meta">${m.listLabel} · ${durLabel(m)}</span>
+                   </button>`).join('')
+               : `<p class="plan-swap-empty">No deferred tasks — everything already fits in the day.</p>`}
+             <button class="plan-swap-cancel" onclick="openPlanSwap(null)">Cancel</button>
+           </div>` : ''}
+        `
       ).join('')}
     </div>
     ${missed.length ? `
       <div class="day-plan-deferred">
-        <div class="dpd-title">⏭ Not enough time today (${missed.length} deferred):</div>
-        ${missed.map(t => `<div class="dpd-item">· ${escWH(t.text)} <span>(${WORK_DURATIONS.find(d => d.val === t.duration)?.label || t.duration + 'm'})</span></div>`).join('')}
+        <div class="dpd-title">⏭ Not enough time today — ${missed.length} deferred (click ⇄ Swap on any slot to bring one in):</div>
+        ${missed.map(t => `<div class="dpd-item">· ${escWH(t.text)} <span>${durLabel(t)} · ${t.listLabel}</span></div>`).join('')}
       </div>` : ''}`);
 }
 
