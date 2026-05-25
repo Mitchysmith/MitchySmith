@@ -9,6 +9,7 @@ const CAT_COLORS = {
   family:   '#c084fc',
   health:   '#f472b6',
   social:   '#facc15',
+  sport:    '#ef4444',
 };
 
 const MONTH_NAMES = ['January','February','March','April','May','June',
@@ -196,6 +197,7 @@ function renderCalendar() {
               <option value="family">Family</option>
               <option value="health">Health</option>
               <option value="social">Social</option>
+              <option value="sport">Sport</option>
             </select>
             <button class="btn btn-primary" id="add-event-btn">Add Event</button>
           </div>
@@ -335,4 +337,31 @@ function renderUpcoming() {
           </div>`;
       }).join('')
     : `<p class="text-muted text-sm">No upcoming events yet.</p>`;
+}
+
+// ── Inter Lions fixtures seed (runs once, skipped if already seeded) ──
+function seedInterLionsFixtures() {
+  if (window.state._interLionsSeed) return;
+
+  // Partial list scraped from search results — dates marked (approx) are uncertain
+  const fixtures = [
+    { title: '⚽ Inter Lions v Blacktown Spartans',  start: '2026-03-01', time: '17:00' },
+    { title: '⚽ Canterbury Bankstown v Inter Lions', start: '2026-03-08', time: ''      }, // approx Round 2
+    { title: '⚽ Hurstville Zagreb v Inter Lions',    start: '2026-03-15', time: ''      }, // approx Round 3
+    { title: '⚽ Prospect United v Inter Lions',      start: '2026-04-11', time: ''      }, // approx Round 9
+    { title: '⚽ Bankstown City Lions v Inter Lions', start: '2026-05-02', time: '17:00' },
+    { title: '⚽ Inter Lions v Dulwich Hill',         start: '2026-05-09', time: '17:00' },
+    { title: '⚽ Inter Lions v Bulls FC Academy',     start: '2026-05-23', time: '19:00' },
+    { title: '⚽ Macarthur Rams v Inter Lions',       start: '2026-07-04', time: '16:30' },
+  ];
+
+  if (!Array.isArray(window.state.events)) window.state.events = [];
+  const existing = new Set(window.state.events.map(e => `${e.title}|${e.start}`));
+  fixtures.forEach(f => {
+    if (!existing.has(`${f.title}|${f.start}`)) {
+      window.state.events.push({ id: Date.now() + Math.random(), ...f, category: 'sport' });
+    }
+  });
+  window.state._interLionsSeed = true;
+  saveState();
 }

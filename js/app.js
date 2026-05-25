@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   go(initClock,       'initClock');
   go(renderHome,      'renderHome');
   go(renderTasks,     'renderTasks');
+  go(seedInterLionsFixtures, 'seedInterLionsFixtures');
   go(renderCalendar,  'renderCalendar');
   go(renderFinance,   'renderFinance');
   go(renderLearn,     'renderLearn');
