@@ -799,6 +799,80 @@
 .hp-empty-state h3 { font-size: 17px; font-weight: 700; color: var(--text); margin: 12px 0 8px; }
 .hp-empty-state p  { font-size: 13px; line-height: 1.6; max-width: 280px; margin: 0 auto; }
 
+/* ── Existing Loans section ── */
+.loans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.loan-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+.loan-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.loan-label-input {
+  flex: 1;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 10px;
+  font-family: var(--font);
+  transition: border-color var(--transition);
+}
+.loan-label-input:focus { outline: none; border-color: var(--blue); }
+.loan-label-input::placeholder { color: var(--text-dim); font-weight: 400; }
+.loan-delete-btn {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  font-family: var(--font);
+}
+.loan-delete-btn:hover { background: var(--orange-glow); border-color: var(--orange); color: var(--orange); }
+.loan-calc-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.loan-calc-positive { color: var(--green); }
+.add-loan-btn {
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: var(--font);
+  width: 100%;
+}
+.add-loan-btn:hover { color: var(--blue); border-color: var(--blue); background: var(--blue-glow); }
+
 /* ── Savings Timeline Card (top of 2027 Areas results) ── */
 .savings-timeline-card {
   display: flex;

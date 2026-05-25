@@ -58,8 +58,11 @@ function calcTotalCashNeeded(f) {
 }
 
 function runTimelineSimulation(f) {
-  const totalIncome    = (f.mitchIncome||0) + (f.samIncome||0);
-  const totalExpenses  = (f.expHomeLoan||0) + (f.expJoint||0) + (f.expMitch||0) + (f.expSam||0);
+  const loanRep     = (f.loans||[]).reduce((s,l) => s+(l.balance&&l.rate&&l.term?Math.round(calcRepayment(l.balance,l.rate,l.term)):0), 0);
+  const loanStrata  = (f.loans||[]).reduce((s,l) => s+(l.strata||0), 0);
+  const loanRental  = (f.loans||[]).reduce((s,l) => s+(l.rentalIncome||0), 0);
+  const totalIncome    = (f.mitchIncome||0) + (f.samIncome||0) + loanRental;
+  const totalExpenses  = (f.expHomeLoan||0) + (f.expJoint||0) + (f.expMitch||0) + (f.expSam||0) + loanRep + loanStrata;
   const surplus        = Math.max(0, totalIncome - totalExpenses);
   const roiMonthly     = ((f.investments||0) * ((f.roiRate||5.5) / 100)) / 12;
   const monthlyContrib = surplus + roiMonthly;
@@ -83,7 +86,7 @@ function runTimelineSimulation(f) {
   const finalDeposit = Math.round(finalPrice * finalDepPct);
   const finalLoan    = finalPrice - finalDeposit;
   const newRepayment = finalLoan > 0 ? Math.round(calcRepayment(finalLoan, f.propRate || 6.2, f.propTerm || 30)) : 0;
-  const expAfterBuy  = (f.expJoint||0) + (f.expMitch||0) + (f.expSam||0) + newRepayment;
+  const expAfterBuy  = (f.expJoint||0) + (f.expMitch||0) + (f.expSam||0) + newRepayment + loanRep + loanStrata;
   const surplusAfter = totalIncome - expAfterBuy;
 
   const readyDate = new Date();
@@ -137,11 +140,13 @@ function _initFinanceDefaults() {
     expHomeLoan: 0, expJoint: 0, expMitch: 0, expSam: 0,
     propPrice: 0, propDepositPct: 20, propRate: 6.2, propTerm: 30,
     propState: 'NSW', propGrowthRate: 3,
+    loans: [],
   };
   Object.entries(defs).forEach(([k, v]) => { if (f[k] === undefined) f[k] = v; });
   // Migrate old single-field income/expenses
   if (!f.mitchIncome && !f.samIncome && f.income)   f.mitchIncome = f.income;
   if (!f.expJoint && !f.expMitch && !f.expSam && f.expenses) f.expJoint = f.expenses;
+  if (!Array.isArray(f.loans)) f.loans = [];
 }
 
 function bindFinanceEvents() {
@@ -169,8 +174,11 @@ function renderSavingsGoal() {
 
   const mitchIncome    = f.mitchIncome  || 0;
   const samIncome      = f.samIncome    || 0;
-  const totalIncome    = (mitchIncome + samIncome) || f.income || 0;
-  const totalExpenses  = (f.expHomeLoan||0)+(f.expJoint||0)+(f.expMitch||0)+(f.expSam||0) || f.expenses || 0;
+  const _loanRep       = (f.loans||[]).reduce((s,l) => s+(l.balance&&l.rate&&l.term?Math.round(calcRepayment(l.balance,l.rate,l.term)):0), 0);
+  const _loanStrata    = (f.loans||[]).reduce((s,l) => s+(l.strata||0), 0);
+  const _loanRental    = (f.loans||[]).reduce((s,l) => s+(l.rentalIncome||0), 0);
+  const totalIncome    = (mitchIncome + samIncome + _loanRental) || f.income || 0;
+  const totalExpenses  = (f.expHomeLoan||0)+(f.expJoint||0)+(f.expMitch||0)+(f.expSam||0)+_loanRep+_loanStrata || f.expenses || 0;
   const surplus        = Math.max(0, totalIncome - totalExpenses);
   const investments    = f.investments || 0;
   const target         = calcTotalCashNeeded(f) || 0;
@@ -328,8 +336,11 @@ function logMonthlyUpdate() {
   if (!saved && saved !== 0) return;
 
   const f             = window.state.finance;
-  const totalIncome   = (f.mitchIncome||0)+(f.samIncome||0) || f.income || 0;
-  const totalExpenses = (f.expHomeLoan||0)+(f.expJoint||0)+(f.expMitch||0)+(f.expSam||0) || f.expenses || 0;
+  const _lr  = (f.loans||[]).reduce((s,l) => s+(l.balance&&l.rate&&l.term?Math.round(calcRepayment(l.balance,l.rate,l.term)):0), 0);
+  const _ls  = (f.loans||[]).reduce((s,l) => s+(l.strata||0), 0);
+  const _lri = (f.loans||[]).reduce((s,l) => s+(l.rentalIncome||0), 0);
+  const totalIncome   = (f.mitchIncome||0)+(f.samIncome||0)+_lri || f.income || 0;
+  const totalExpenses = (f.expHomeLoan||0)+(f.expJoint||0)+(f.expMitch||0)+(f.expSam||0)+_lr+_ls || f.expenses || 0;
   const surplus       = Math.max(0, totalIncome - totalExpenses);
   const roiMonthly    = Math.round(((f.investments||0)*((f.roiRate??5.5)/100))/12);
   const totalMonthly  = surplus + roiMonthly;
@@ -462,7 +473,7 @@ function renderHomePlanningPanel() {
           <div class="hp-section-title">💸 Expenses</div>
           <div class="form-row">
             <div class="form-group">
-              <label>Home loan / rent repayments (${isAnnual?'annual':'monthly'})</label>
+              <label>Rent / other housing costs (${isAnnual?'annual':'monthly'})</label>
               <input type="number" id="hp-exp-homeloan" value="${show(f.expHomeLoan)}" placeholder="${isAnnual?'48000':'4000'}" />
             </div>
             <div class="form-group">
@@ -480,6 +491,12 @@ function renderHomePlanningPanel() {
               <input type="number" id="hp-exp-sam" value="${show(f.expSam)}" placeholder="${isAnnual?'12000':'1000'}" />
             </div>
           </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hp-section-title">🏦 Existing Loans</div>
+          <p style="font-size:12px;color:var(--text-muted);margin:-4px 0 14px">Add any current home loans or investment property loans. Repayments are calculated automatically — rental income and strata costs offset each other in your cash flow.</p>
+          ${_renderLoansSection(f.loans, isAnnual)}
         </div>
 
         <div class="card" style="margin-bottom:14px">
@@ -565,8 +582,19 @@ function _bindHomePlanEvents(el) {
   });
 
   let _debounce;
-  el.querySelectorAll('input[type="number"], select').forEach(inp => {
-    inp.addEventListener('input', () => { clearTimeout(_debounce); _debounce = setTimeout(_updateHomeLivePreview, 200); });
+  el.addEventListener('input', e => {
+    if (e.target.classList.contains('loan-field') || e.target.classList.contains('loan-label-input')) {
+      const isAnnual = window.state.finance.inputMode === 'annual';
+      saveLoanField(e.target.dataset.id, e.target.dataset.field, e.target.value, isAnnual);
+    }
+    clearTimeout(_debounce);
+    _debounce = setTimeout(_updateHomeLivePreview, 200);
+  });
+
+  el.addEventListener('click', e => {
+    if (e.target.closest('#add-loan-btn')) { _autoSaveHomePlanInputs(); addLoan(); return; }
+    const del = e.target.closest('.loan-delete-btn');
+    if (del) { _autoSaveHomePlanInputs(); deleteLoan(del.dataset.id); }
   });
 
   document.getElementById('hp-save-btn').addEventListener('click', saveHomePlanning);
@@ -592,6 +620,7 @@ function _readHomePlanInputs() {
     propGrowthRate: +(document.querySelector('#hp-growth-toggle .toggle-btn.active')?.dataset.val || 3),
     propRate:       +document.getElementById('hp-prop-rate')?.value   || 6.2,
     propTerm:       +document.getElementById('hp-prop-term')?.value   || 30,
+    loans:          window.state.finance.loans || [],
   };
 }
 
@@ -606,8 +635,11 @@ function _autoSaveHomePlanInputs() {
 
 function _updateHomeLivePreview() {
   const d             = _readHomePlanInputs();
-  const totalIncome   = d.mitchIncome + d.samIncome;
-  const totalExpenses = d.expHomeLoan + d.expJoint + d.expMitch + d.expSam;
+  const loanRepayments  = (d.loans||[]).reduce((s,l) => s+(l.balance&&l.rate&&l.term?Math.round(calcRepayment(l.balance,l.rate,l.term)):0), 0);
+  const totalStrata     = (d.loans||[]).reduce((s,l) => s+(l.strata||0), 0);
+  const totalRental     = (d.loans||[]).reduce((s,l) => s+(l.rentalIncome||0), 0);
+  const totalIncome   = d.mitchIncome + d.samIncome + totalRental;
+  const totalExpenses = d.expHomeLoan + d.expJoint + d.expMitch + d.expSam + loanRepayments + totalStrata;
   const surplus       = Math.max(0, totalIncome - totalExpenses);
   const roiMonthly    = Math.round((d.investments * d.roiRate / 100) / 12);
   const target        = calcTotalCashNeeded(d);
@@ -639,21 +671,28 @@ function _updateHomeLivePreview() {
     const loanAmt     = d.propPrice - deposit;
     const monthly     = Math.round(calcRepayment(loanAmt, d.propRate, d.propTerm));
     const testMonthly = Math.round(calcRepayment(loanAmt, d.propRate + 3, d.propTerm));
-    const expAfterBuy = d.expJoint + d.expMitch + d.expSam + monthly;
+    const testExisting= (d.loans||[]).reduce((s,l) => s+(l.balance&&l.rate&&l.term?Math.round(calcRepayment(l.balance,l.rate+3,l.term)):0), 0);
+    const expAfterBuy = d.expJoint + d.expMitch + d.expSam + monthly + loanRepayments + totalStrata;
     const afterSurp   = totalIncome - expAfterBuy;
-    const canService  = testMonthly <= totalIncome * 0.35;
+    const canService  = (testMonthly + testExisting) <= totalIncome * 0.4;
+    const existingLoansHtml = (d.loans||[]).filter(l=>l.balance&&l.rate&&l.term).map(l => {
+      const rep = Math.round(calcRepayment(l.balance, l.rate, l.term));
+      return `<div class="hp-sr-row"><span>${l.label||'Existing loan'}</span><span>−$${rep.toLocaleString()}</span></div>`;
+    }).join('');
     const svcEl = document.getElementById('hp-serviceability');
     if (svcEl) svcEl.innerHTML = `
       <div class="hp-service ${canService?'hp-service-ok':'hp-service-risk'}">
         <div class="hp-service-title">${canService ? '✓ Looks serviceable' : '⚠ May be tight'}</div>
-        <div class="hp-sr-row"><span>Combined monthly income</span><span>$${totalIncome.toLocaleString()}</span></div>
+        <div class="hp-sr-row"><span>Combined income (incl. rental)</span><span>$${totalIncome.toLocaleString()}</span></div>
         <div class="hp-sr-row"><span>New mortgage (P&I, ${d.propRate}%)</span><span>−$${monthly.toLocaleString()}</span></div>
+        ${existingLoansHtml}
+        ${totalStrata > 0 ? `<div class="hp-sr-row"><span>Strata / body corp</span><span>−$${totalStrata.toLocaleString()}</span></div>` : ''}
         <div class="hp-sr-row"><span>Joint + personal expenses</span><span>−$${(d.expJoint+d.expMitch+d.expSam).toLocaleString()}</span></div>
         <div class="hp-sr-row hp-sr-result ${afterSurp>=0?'positive':'negative'}">
           <span>Monthly surplus after purchase</span>
           <span>${afterSurp>=0?'+':''}$${Math.round(afterSurp).toLocaleString()}</span>
         </div>
-        <div class="hp-sr-note">Serviceability test uses +3% buffer rate: $${testMonthly.toLocaleString()}/mo</div>
+        <div class="hp-sr-note">Buffer-rate test (all loans +3%): $${(testMonthly+testExisting).toLocaleString()}/mo vs 40% income cap $${Math.round(totalIncome*0.4).toLocaleString()}/mo</div>
       </div>`;
   } else {
     const svcEl = document.getElementById('hp-serviceability');
@@ -664,14 +703,15 @@ function _updateHomeLivePreview() {
   const summaryEl  = document.getElementById('hp-summary');
   if (summaryEl) summaryEl.innerHTML = _buildHomePlanSummaryHTML({
     ...d, totalIncome, totalExpenses, surplus, roiMonthly, target, sim,
-    currentSavings: d.savings,
+    currentSavings: d.savings, loanRepayments, totalStrata, totalRental,
   });
 }
 
 function _buildHomePlanSummaryHTML(d) {
   const { totalIncome, totalExpenses, surplus, roiMonthly, target, sim, currentSavings,
           mitchIncome, samIncome, expHomeLoan, expJoint, expMitch, expSam,
-          investments, roiRate, propGrowthRate } = d;
+          investments, roiRate, propGrowthRate, loans,
+          loanRepayments, totalStrata, totalRental } = d;
   const totalMonthly = surplus + (roiMonthly || 0);
   const remaining    = Math.max(0, target - currentSavings);
   const pct          = target > 0 ? Math.min(100, Math.round(currentSavings / target * 100)) : 0;
@@ -707,11 +747,17 @@ function _buildHomePlanSummaryHTML(d) {
       <div class="sp-section">
         <div class="sp-row"><span class="sp-row-label">Mitch's income</span><span class="sp-row-val" style="color:var(--green)">$${(mitchIncome||0).toLocaleString()}</span></div>
         <div class="sp-row"><span class="sp-row-label">Sam's income</span><span class="sp-row-val" style="color:var(--green)">$${(samIncome||0).toLocaleString()}</span></div>
+        ${(totalRental||0)>0?`<div class="sp-row"><span class="sp-row-label">Rental income</span><span class="sp-row-val" style="color:var(--green)">+$${totalRental.toLocaleString()}</span></div>`:''}
         <div class="sp-total-row"><span>Total income</span><span style="color:var(--green)">$${totalIncome.toLocaleString()}/mo</span></div>
       </div>
 
       <div class="sp-section">
-        <div class="sp-row"><span class="sp-row-label">Home loan / rent</span><span class="sp-row-val" style="color:var(--orange)">−$${(expHomeLoan||0).toLocaleString()}</span></div>
+        ${(expHomeLoan||0)>0?`<div class="sp-row"><span class="sp-row-label">Rent / other housing</span><span class="sp-row-val" style="color:var(--orange)">−$${expHomeLoan.toLocaleString()}</span></div>`:''}
+        ${(loans||[]).filter(l=>l.balance&&l.rate&&l.term).map(l=>{
+          const rep=Math.round(calcRepayment(l.balance,l.rate,l.term));
+          return `<div class="sp-row"><span class="sp-row-label">${l.label||'Loan'}</span><span class="sp-row-val" style="color:var(--orange)">−$${rep.toLocaleString()}</span></div>`;
+        }).join('')}
+        ${(totalStrata||0)>0?`<div class="sp-row"><span class="sp-row-label">Strata / body corp</span><span class="sp-row-val" style="color:var(--orange)">−$${totalStrata.toLocaleString()}</span></div>`:''}
         <div class="sp-row"><span class="sp-row-label">Joint expenses</span><span class="sp-row-val" style="color:var(--orange)">−$${(expJoint||0).toLocaleString()}</span></div>
         <div class="sp-row"><span class="sp-row-label">Mitch personal</span><span class="sp-row-val" style="color:var(--orange)">−$${(expMitch||0).toLocaleString()}</span></div>
         <div class="sp-row"><span class="sp-row-label">Sam personal</span><span class="sp-row-val" style="color:var(--orange)">−$${(expSam||0).toLocaleString()}</span></div>
@@ -749,6 +795,93 @@ function saveHomePlanning() {
     setTimeout(() => { btn.textContent = 'Save & Update'; btn.style.background = ''; }, 2000);
   }
   renderSavingsGoal();
+}
+
+// ─────────────────────────────────────────────────────────
+// LOAN MANAGEMENT
+// ─────────────────────────────────────────────────────────
+
+function addLoan() {
+  const f = window.state.finance;
+  if (!Array.isArray(f.loans)) f.loans = [];
+  f.loans.push({ id: String(Date.now()), label: '', balance: 0, rate: 6.2, term: 30, rentalIncome: 0, strata: 0 });
+  saveState();
+  renderHomePlanningPanel();
+}
+
+function deleteLoan(id) {
+  const f = window.state.finance;
+  f.loans = (f.loans || []).filter(l => String(l.id) !== String(id));
+  saveState();
+  renderHomePlanningPanel();
+}
+
+function saveLoanField(id, field, value, isAnnual) {
+  const f    = window.state.finance;
+  const loan = (f.loans || []).find(l => String(l.id) === String(id));
+  if (!loan) return;
+  if (field === 'label') {
+    loan.label = value;
+  } else if (['rentalIncome', 'strata'].includes(field)) {
+    loan[field] = isAnnual ? Math.round((+value || 0) / 12) : (+value || 0);
+  } else {
+    loan[field] = +value || 0;
+  }
+  saveState();
+}
+
+function _renderLoansSection(loans, isAnnual) {
+  const show = v => isAnnual ? (Math.round((v||0)*12)||'') : ((v||0)||'');
+
+  const loanCards = (loans || []).map(loan => {
+    const rep = loan.balance && loan.rate && loan.term
+      ? Math.round(calcRepayment(loan.balance, loan.rate, loan.term)) : 0;
+    const netCost = rep + (loan.strata||0) - (loan.rentalIncome||0);
+    const calcRow = rep > 0 ? `
+      <div class="loan-calc-row">
+        <span>Repayment <strong>$${rep.toLocaleString()}/mo</strong></span>
+        ${(loan.strata||0)>0 ? `<span style="color:var(--orange)">+ strata $${loan.strata.toLocaleString()}</span>` : ''}
+        ${(loan.rentalIncome||0)>0 ? `<span style="color:var(--green)">− rental $${loan.rentalIncome.toLocaleString()}</span>` : ''}
+        <span class="${netCost>=0?'':'loan-calc-positive'}">Net <strong>$${netCost.toLocaleString()}/mo</strong></span>
+      </div>` : '';
+
+    return `
+      <div class="loan-card">
+        <div class="loan-card-header">
+          <input class="loan-label-input" type="text" value="${loan.label||''}" placeholder="e.g. Investment Property — Parramatta" data-field="label" data-id="${loan.id}" />
+          <button class="loan-delete-btn" data-id="${loan.id}" title="Remove">✕</button>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Balance outstanding ($)</label>
+            <input type="number" class="loan-field" data-field="balance" data-id="${loan.id}" value="${loan.balance||''}" placeholder="450000" />
+          </div>
+          <div class="form-group">
+            <label>Interest rate (%)</label>
+            <input type="number" step="0.1" class="loan-field" data-field="rate" data-id="${loan.id}" value="${loan.rate||6.2}" />
+          </div>
+          <div class="form-group">
+            <label>Years remaining</label>
+            <input type="number" class="loan-field" data-field="term" data-id="${loan.id}" value="${loan.term||30}" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Rental income (${isAnnual?'annual':'monthly'}, if any)</label>
+            <input type="number" class="loan-field" data-field="rentalIncome" data-id="${loan.id}" value="${show(loan.rentalIncome)}" placeholder="0" />
+          </div>
+          <div class="form-group">
+            <label>Strata / body corp (${isAnnual?'annual':'monthly'}, if any)</label>
+            <input type="number" class="loan-field" data-field="strata" data-id="${loan.id}" value="${show(loan.strata)}" placeholder="0" />
+          </div>
+        </div>
+        ${calcRow}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="loans-list">${loanCards}</div>
+    <button class="btn w-full add-loan-btn" id="add-loan-btn">+ Add Loan</button>`;
 }
 
 // ─────────────────────────────────────────────────────────

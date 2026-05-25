@@ -13,6 +13,7 @@ const DB = {
       mitchIncome: 0, samIncome: 0,
       savings: 0, investments: 0, roiRate: 5.5,
       expHomeLoan: 0, expJoint: 0, expMitch: 0, expSam: 0,
+      loans: [],
       propPrice: 0, propDepositPct: 20, propRate: 6.2, propTerm: 30,
       propState: 'NSW', propGrowthRate: 3,
       // legacy
