@@ -8,9 +8,15 @@ const DB = {
     householdMembers: [],
     events: [],
     finance: {
-      income: 0, expenses: 0, savings: 0, investments: 0,
-      savingsGoal: 0, purchaseGoals: [],
-      properties: [],
+      goalName: '', target: 0, history: [], lastMilestonePct: 0,
+      inputMode: 'monthly',
+      mitchIncome: 0, samIncome: 0,
+      savings: 0, investments: 0, roiRate: 5.5,
+      expHomeLoan: 0, expJoint: 0, expMitch: 0, expSam: 0,
+      propPrice: 0, propDepositPct: 20, propRate: 6.2, propTerm: 30,
+      propState: 'NSW', propGrowthRate: 3,
+      // legacy
+      income: 0, expenses: 0, savingsGoal: 0, purchaseGoals: [], properties: [],
     },
     pantry: [],
     exercise: {

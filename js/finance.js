@@ -1,27 +1,29 @@
-// ── Finance – Savings Goal Tracker ──
+// ── Finance – Home Purchase Planner ──
 
 const STAMP_DUTY = {
   NSW: { thresholds:[0,16000,35000,91000,160000,1100000,3000000], rates:[0.0125,0.015,0.0175,0.035,0.045,0.055,0.07] },
-  VIC: { thresholds:[0,25000,130000,960000,2000000], rates:[0.014,0.024,0.06,0.055,0.065] },
-  QLD: { thresholds:[0,5000,75000,540000,1000000], rates:[0,0.015,0.035,0.0425,0.0575] },
-  WA:  { thresholds:[0,120000,150000,360000,725000], rates:[0.019,0.0285,0.03,0.0425,0.0515] },
+  VIC: { thresholds:[0,25000,130000,960000,2000000],               rates:[0.014,0.024,0.06,0.055,0.065] },
+  QLD: { thresholds:[0,5000,75000,540000,1000000],                 rates:[0,0.015,0.035,0.0425,0.0575] },
+  WA:  { thresholds:[0,120000,150000,360000,725000],               rates:[0.019,0.0285,0.03,0.0425,0.0515] },
   SA:  { thresholds:[0,12000,30000,50000,100000,200000,250000,300000,500000], rates:[0.01,0.02,0.03,0.035,0.04,0.045,0.05,0.055,0.057] },
   ACT: { thresholds:[0,200000,300000,500000,750000,1000000,1455000], rates:[0.002,0.0392,0.0414,0.0559,0.0596,0.0638,0.0694] },
-  TAS: { thresholds:[0,3000,25000,75000,200000,375000,725000], rates:[0.01875,0.02,0.025,0.03,0.035,0.04,0.045] },
-  NT:  { thresholds:[0,525000,3000000], rates:[0.0549,0.059,0.0645] },
+  TAS: { thresholds:[0,3000,25000,75000,200000,375000,725000],     rates:[0.01875,0.02,0.025,0.03,0.035,0.04,0.045] },
+  NT:  { thresholds:[0,525000,3000000],                            rates:[0.0549,0.059,0.0645] },
 };
 
 const CELEBRATE_MSGS = [
-  { title: '🎉 Absolutely smashed it!', msg: 'You saved more than planned this month. That\'s the compounding magic starting to work. Keep this up and you\'ll hit your goal ahead of schedule.' },
-  { title: '🚀 Legend behaviour!', msg: 'You\'re ahead of target — your future self is doing a happy dance right now. One month like this brings the finish line noticeably closer.' },
-  { title: '💪 Killing it!', msg: 'More saved than expected. Every extra dollar is working for you. This is exactly how goals get smashed early.' },
+  { title: '🎉 Absolutely smashed it!',   msg: 'You saved more than planned this month. That\'s the compounding magic starting to work. Keep this up and you\'ll hit your goal ahead of schedule.' },
+  { title: '🚀 Legend behaviour!',         msg: 'You\'re ahead of target — your future self is doing a happy dance right now. One month like this brings the finish line noticeably closer.' },
+  { title: '💪 Killing it!',              msg: 'More saved than expected. Every extra dollar is working for you. This is exactly how goals get smashed early.' },
 ];
 
 const SHAME_MSGS = [
-  { title: '😬 Oof. That\'s a bit rough.', msg: 'You came in under target this month. No judgement — but maybe check what slipped. One quiet month is fine; a pattern is not.' },
+  { title: '😬 Oof. That\'s a bit rough.',          msg: 'You came in under target this month. No judgement — but maybe check what slipped. One quiet month is fine; a pattern is not.' },
   { title: '🫠 Your savings goal is not impressed.', msg: 'Less than planned went in this month. The goal hasn\'t changed — just the timeline has stretched. Time to tighten up next month.' },
-  { title: '😅 Well… at least you tracked it.', msg: 'Under target this month. Awareness is step one. Step two is doing better next month. You\'ve got this — just requires a bit more discipline.' },
+  { title: '😅 Well… at least you tracked it.',     msg: 'Under target this month. Awareness is step one. Step two is doing better next month. You\'ve got this — just requires a bit more discipline.' },
 ];
+
+// ── Pure helpers ──
 
 function calcStampDuty(price, state) {
   const sd = STAMP_DUTY[state];
@@ -30,9 +32,7 @@ function calcStampDuty(price, state) {
   for (let i = sd.thresholds.length - 1; i >= 0; i--) {
     if (price > sd.thresholds[i]) {
       duty = (price - sd.thresholds[i]) * sd.rates[i];
-      for (let j = i - 1; j >= 0; j--) {
-        duty += (sd.thresholds[j+1] - sd.thresholds[j]) * sd.rates[j];
-      }
+      for (let j = i - 1; j >= 0; j--) duty += (sd.thresholds[j+1] - sd.thresholds[j]) * sd.rates[j];
       break;
     }
   }
@@ -46,91 +46,102 @@ function calcRepayment(principal, annualRate, years) {
   return principal * r * Math.pow(1+r, n) / (Math.pow(1+r, n) - 1);
 }
 
+function calcTotalCashNeeded(f) {
+  const price = +(f.propPrice || 0);
+  if (!price) return f.target || 0;
+  const depPct  = (f.propDepositPct || 20) / 100;
+  const deposit = Math.round(price * depPct);
+  const loan    = price - deposit;
+  const stamp   = calcStampDuty(price, f.propState || 'NSW');
+  const lmi     = depPct < 0.2 ? Math.round(loan * 0.02) : 0;
+  return deposit + stamp + lmi + 2600; // conveyancing $2000 + inspection $600
+}
+
+function runTimelineSimulation(f) {
+  const totalIncome    = (f.mitchIncome||0) + (f.samIncome||0);
+  const totalExpenses  = (f.expHomeLoan||0) + (f.expJoint||0) + (f.expMitch||0) + (f.expSam||0);
+  const surplus        = Math.max(0, totalIncome - totalExpenses);
+  const roiMonthly     = ((f.investments||0) * ((f.roiRate||5.5) / 100)) / 12;
+  const monthlyContrib = surplus + roiMonthly;
+  const growthRate     = (f.propGrowthRate || 0) / 100;
+  const basePrice      = f.propPrice || 0;
+
+  let months  = 0;
+  let savings = (f.savings || 0) + (f.investments || 0);
+  const MAX   = 480;
+
+  while (months < MAX) {
+    const projPrice = basePrice > 0 ? basePrice * Math.pow(1 + growthRate, months / 12) : 0;
+    const needed    = calcTotalCashNeeded({ ...f, propPrice: projPrice });
+    if (savings >= needed) break;
+    months++;
+    savings += monthlyContrib;
+  }
+
+  const finalPrice   = basePrice > 0 ? basePrice * Math.pow(1 + growthRate, months / 12) : 0;
+  const finalDepPct  = (f.propDepositPct || 20) / 100;
+  const finalDeposit = Math.round(finalPrice * finalDepPct);
+  const finalLoan    = finalPrice - finalDeposit;
+  const newRepayment = finalLoan > 0 ? Math.round(calcRepayment(finalLoan, f.propRate || 6.2, f.propTerm || 30)) : 0;
+  const expAfterBuy  = (f.expJoint||0) + (f.expMitch||0) + (f.expSam||0) + newRepayment;
+  const surplusAfter = totalIncome - expAfterBuy;
+
+  const readyDate = new Date();
+  readyDate.setMonth(readyDate.getMonth() + months);
+  return { months: months < MAX ? months : null, readyDate, surplusAfter, newRepayment, finalPrice };
+}
+
+// ─────────────────────────────────────────────────────────
+// ROOT RENDER
+// ─────────────────────────────────────────────────────────
+
 function renderFinance() {
   const el = document.getElementById('section-finance');
-  if (!window.state.finance)       window.state.finance = {};
-  if (!window.state.plan2027)      window.state.plan2027 = {};
-  const f = window.state.finance;
-  const p = window.state.plan2027;
+  if (!window.state.finance)  window.state.finance  = {};
+  if (!window.state.plan2027) window.state.plan2027 = {};
+  _initFinanceDefaults();
+
+  const f   = window.state.finance;
+  const p   = window.state.plan2027;
+  const tab = f._activeFinTab || 'savings';
 
   el.innerHTML = `
     <div class="page-header">
       <h1>Finance</h1>
-      <p>Your savings goal, progress, and property planning in one place.</p>
+      <p>Savings goal, home planning, and property areas in one place.</p>
     </div>
 
     <div class="finance-tabs">
-      <div class="fin-tab active" data-fin="savings">Savings Goal</div>
-      <div class="fin-tab" data-fin="setup">Setup</div>
-      <div class="fin-tab" data-fin="plan2027">🏡 2027 Plan</div>
-      <div class="fin-tab" data-fin="property">Property Calc</div>
+      <div class="fin-tab ${tab==='savings' ?'active':''}" data-fin="savings">Savings Goal</div>
+      <div class="fin-tab ${tab==='homeplan'?'active':''}" data-fin="homeplan">🏠 Home Planning</div>
+      <div class="fin-tab ${tab==='plan2027'?'active':''}" data-fin="plan2027">🏡 2027 Areas</div>
     </div>
 
-    <!-- Savings Goal panel -->
-    <div class="fin-panel active" id="fin-savings"></div>
-
-    <!-- Setup panel -->
-    <div class="fin-panel" id="fin-setup">
-      <div class="card">
-        <div class="section-title">Your Numbers</div>
-        <div class="form-row">
-          <div class="form-group"><label>Goal Name</label><input type="text" id="f-goalname" placeholder="e.g. House Deposit" value="${f.goalName||''}" /></div>
-          <div class="form-group"><label>Savings Target ($)</label><input type="number" id="f-target" placeholder="100000" value="${f.target||''}" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Monthly Take-Home Income ($)</label><input type="number" id="f-income" value="${f.income||''}" /></div>
-          <div class="form-group"><label>Monthly Outgoings ($)</label><input type="number" id="f-expenses" value="${f.expenses||''}" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Current Savings ($)</label><input type="number" id="f-savings" value="${f.savings||0}" /></div>
-          <div class="form-group"><label>Current Investments ($)</label><input type="number" id="f-investments" placeholder="e.g. shares, ETFs, super" value="${f.investments||''}" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Expected Annual Return on Investments (%)</label>
-            <input type="number" id="f-roi" step="0.1" min="0" max="50" placeholder="5.5" value="${f.roiRate ?? 5.5}" />
-          </div>
-        </div>
-        <div class="fin-roi-note" id="roi-note">
-          &#128200; At <strong>${f.roiRate ?? 5.5}% per year</strong>, your $${(f.investments||0).toLocaleString()} in investments adds <strong>$${Math.round(((f.investments||0) * (f.roiRate ?? 5.5) / 100) / 12).toLocaleString()}/month</strong> towards your goal.
-        </div>
-        <button class="btn btn-primary" id="save-setup-btn">Save & Update Goal</button>
-      </div>
-    </div>
-
-    <!-- Property panel -->
-    <div class="fin-panel" id="fin-property">
-      <div class="card">
-        <div class="section-title">Property Calculator</div>
-        <div class="form-row">
-          <div class="form-group"><label>Purchase Price ($)</label><input type="number" id="prop-price" placeholder="750000" /></div>
-          <div class="form-group"><label>Deposit (%)</label><input type="number" id="prop-deposit" value="20" /></div>
-        </div>
-        <div class="form-row-3">
-          <div class="form-group"><label>Interest Rate (%)</label><input type="number" id="prop-rate" value="6.2" step="0.1" /></div>
-          <div class="form-group"><label>Loan Term (yrs)</label><input type="number" id="prop-term" value="30" /></div>
-          <div class="form-group"><label>State</label>
-            <select id="prop-state">${Object.keys(STAMP_DUTY).map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Rental Income / mo ($)</label><input type="number" id="prop-rent" value="0" /></div>
-          <div class="form-group"><label>Gross Annual Income ($)</label><input type="number" id="prop-annual-income" placeholder="For serviceability" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Other Loan Repayments / mo ($)</label><input type="number" id="prop-other-loans" value="0" /></div>
-        </div>
-        <button class="btn btn-primary" id="calc-prop-btn">Calculate</button>
-        <div id="prop-result"></div>
-      </div>
-    </div>
-
-    <!-- 2027 Property Plan panel -->
-    <div class="fin-panel" id="fin-plan2027">${build2027PanelHTML(p)}</div>
+    <div class="fin-panel ${tab==='savings' ?'active':''}" id="fin-savings"></div>
+    <div class="fin-panel ${tab==='homeplan'?'active':''}" id="fin-homeplan"></div>
+    <div class="fin-panel ${tab==='plan2027'?'active':''}" id="fin-plan2027">${build2027PanelHTML(p)}</div>
   `;
 
   bindFinanceEvents();
   renderSavingsGoal();
+  renderHomePlanningPanel();
+}
+
+function _initFinanceDefaults() {
+  const f    = window.state.finance;
+  const defs = {
+    goalName: '', target: 0, history: [], lastMilestonePct: 0,
+    inputMode: 'monthly',
+    mitchIncome: 0, samIncome: 0,
+    savings: 0, investments: 0, roiRate: 5.5,
+    expHomeLoan: 0, expJoint: 0, expMitch: 0, expSam: 0,
+    propPrice: 0, propDepositPct: 20, propRate: 6.2, propTerm: 30,
+    propState: 'NSW', propGrowthRate: 3,
+  };
+  Object.entries(defs).forEach(([k, v]) => { if (f[k] === undefined) f[k] = v; });
+  // Migrate old single-field income/expenses
+  if (!f.mitchIncome && !f.samIncome && f.income)   f.mitchIncome = f.income;
+  if (!f.expJoint && !f.expMitch && !f.expSam && f.expenses) f.expJoint = f.expenses;
 }
 
 function bindFinanceEvents() {
@@ -140,67 +151,53 @@ function bindFinanceEvents() {
       document.querySelectorAll('.fin-panel').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById('fin-' + tab.dataset.fin).classList.add('active');
+      window.state.finance._activeFinTab = tab.dataset.fin;
+      saveState();
     });
   });
-
-  document.getElementById('save-setup-btn').addEventListener('click', saveSetup);
-  document.getElementById('calc-prop-btn').addEventListener('click', calcProperty);
   document.getElementById('save-plan2027-btn')?.addEventListener('click', savePlan2027);
 }
 
-function saveSetup() {
-  const f = window.state.finance;
-  f.goalName    = document.getElementById('f-goalname').value.trim() || 'My Savings Goal';
-  f.target      = +document.getElementById('f-target').value      || 0;
-  f.income      = +document.getElementById('f-income').value      || 0;
-  f.expenses    = +document.getElementById('f-expenses').value    || 0;
-  f.savings     = +document.getElementById('f-savings').value     || 0;
-  f.investments = +document.getElementById('f-investments').value || 0;
-  f.roiRate     = +document.getElementById('f-roi').value ?? 5.5;
-  saveState();
-
-  const btn = document.getElementById('save-setup-btn');
-  btn.textContent = 'Saved ✓'; btn.style.background = 'var(--green)';
-  setTimeout(() => { btn.textContent = 'Save & Update Goal'; btn.style.background = ''; }, 2000);
-
-  renderSavingsGoal();
-}
+// ─────────────────────────────────────────────────────────
+// SAVINGS GOAL TAB
+// ─────────────────────────────────────────────────────────
 
 function renderSavingsGoal() {
   const el = document.getElementById('fin-savings');
   if (!el) return;
   const f = window.state.finance;
 
-  const target      = f.target      || 0;
-  const current     = f.savings     || 0;
-  const investments = f.investments || 0;
-  const income      = f.income      || 0;
-  const expenses    = f.expenses    || 0;
-  const surplus     = Math.max(0, income - expenses);
-  const name        = f.goalName    || 'My Savings Goal';
-  const remaining   = Math.max(0, target - current);
-  const pct         = target ? Math.min(100, Math.round(current / target * 100)) : 0;
+  const mitchIncome    = f.mitchIncome  || 0;
+  const samIncome      = f.samIncome    || 0;
+  const totalIncome    = (mitchIncome + samIncome) || f.income || 0;
+  const totalExpenses  = (f.expHomeLoan||0)+(f.expJoint||0)+(f.expMitch||0)+(f.expSam||0) || f.expenses || 0;
+  const surplus        = Math.max(0, totalIncome - totalExpenses);
+  const investments    = f.investments || 0;
+  const target         = calcTotalCashNeeded(f) || 0;
+  const current        = f.savings || 0;
+  const name           = f.propPrice > 0
+    ? (f.goalName || `${f.propDepositPct||20}% deposit + costs — $${(f.propPrice).toLocaleString()} target`)
+    : (f.goalName || 'My Savings Goal');
+  const remaining      = Math.max(0, target - current);
+  const pct            = target ? Math.min(100, Math.round(current / target * 100)) : 0;
+  const ROI_RATE       = (f.roiRate ?? 5.5) / 100;
+  const roiMonthly     = Math.round((investments * ROI_RATE) / 12);
+  const totalMonthly   = surplus + roiMonthly;
+  const monthsLeft     = totalMonthly > 0 ? Math.ceil(remaining / totalMonthly) : null;
 
-  // Variable ROI rate (default 5.5%) spread across 12 months
-  const ROI_RATE            = (f.roiRate ?? 5.5) / 100;
-  const monthlyInvestReturn = Math.round((investments * ROI_RATE) / 12);
-  const totalMonthly        = surplus + monthlyInvestReturn;
-  const monthsLeft          = totalMonthly > 0 ? Math.ceil(remaining / totalMonthly) : null;
-
-  // If not set up yet
   if (!target) {
     el.innerHTML = `
       <div class="no-goal-state">
         <div class="big-emoji">🎯</div>
         <h3>Set your savings goal</h3>
-        <p>Head to the <strong>Setup</strong> tab and enter your income, outgoings, and target amount — then come back here to track your progress.</p>
-        <button class="btn btn-primary" id="goto-setup-btn">Set Up My Goal</button>
+        <p>Head to <strong>Home Planning</strong> and enter a target house price — we'll calculate exactly how much cash you need and track your progress here.</p>
+        <button class="btn btn-primary" id="goto-homeplan-btn">Set Up Home Plan</button>
       </div>`;
-    document.getElementById('goto-setup-btn').addEventListener('click', () => {
+    document.getElementById('goto-homeplan-btn').addEventListener('click', () => {
       document.querySelectorAll('.fin-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.fin-panel').forEach(p => p.classList.remove('active'));
-      document.querySelector('[data-fin="setup"]').classList.add('active');
-      document.getElementById('fin-setup').classList.add('active');
+      document.querySelector('[data-fin="homeplan"]').classList.add('active');
+      document.getElementById('fin-homeplan').classList.add('active');
     });
     return;
   }
@@ -208,15 +205,14 @@ function renderSavingsGoal() {
   const timeStr = monthsLeft
     ? monthsLeft <= 1 ? '< 1 month away 🔥'
       : monthsLeft < 12 ? `${monthsLeft} months away`
-      : `${(monthsLeft / 12).toFixed(1)} years away`
+      : `${Math.floor(monthsLeft/12)}y ${monthsLeft%12}m away`
     : 'Set your surplus to see';
 
-  // Milestones
   const milestones = [
     { pct: 25, emoji: '🌱', label: 'First step' },
-    { pct: 50, emoji: '⚡', label: 'Halfway!'  },
-    { pct: 75, emoji: '🔥', label: 'So close'  },
-    { pct: 100, emoji: '🏆', label: 'Done!'    },
+    { pct: 50, emoji: '⚡', label: 'Halfway!'   },
+    { pct: 75, emoji: '🔥', label: 'So close'   },
+    { pct: 100, emoji: '🏆', label: 'Done!'     },
   ];
 
   const milestonesHtml = milestones.map(m => `
@@ -247,7 +243,6 @@ function renderSavingsGoal() {
     : `<p class="text-muted text-sm">No updates yet — log your first month below.</p>`;
 
   el.innerHTML = `
-    <!-- Hero progress card -->
     <div class="goal-hero">
       <div class="goal-hero-top">
         <div>
@@ -277,16 +272,12 @@ function renderSavingsGoal() {
           <div class="gh-stat-lbl">Est. Timeline</div>
         </div>
       </div>
-
       ${investments > 0 ? `
       <div class="goal-roi-breakdown">
+        <div class="roi-row"><span>💰 Monthly surplus</span><span>$${surplus.toLocaleString()}</span></div>
         <div class="roi-row">
-          <span>💰 Monthly surplus</span>
-          <span>$${surplus.toLocaleString()}</span>
-        </div>
-        <div class="roi-row">
-          <span>📈 Investment return (${(ROI_RATE * 100).toFixed(1)}% p.a. on $${investments.toLocaleString()})</span>
-          <span style="color:var(--green)">+$${monthlyInvestReturn.toLocaleString()}/mo</span>
+          <span>📈 Investment return (${(ROI_RATE*100).toFixed(1)}% p.a. on $${investments.toLocaleString()})</span>
+          <span style="color:var(--green)">+$${roiMonthly.toLocaleString()}/mo</span>
         </div>
         <div class="roi-row roi-total">
           <span>Total towards goal each month</span>
@@ -295,10 +286,8 @@ function renderSavingsGoal() {
       </div>` : ''}
     </div>
 
-    <!-- Milestones -->
     <div class="milestones">${milestonesHtml}</div>
 
-    <!-- Monthly update -->
     <div class="update-card">
       <h3>Log This Month</h3>
       <p>Enter what you actually saved this month — be honest. We'll celebrate the wins and call out the shortfalls.</p>
@@ -316,14 +305,12 @@ function renderSavingsGoal() {
       <div class="reaction-banner" id="reaction-banner"></div>
     </div>
 
-    <!-- History -->
     <div class="card">
       <div class="section-title">Monthly History</div>
       <div id="history-list">${historyHtml}</div>
     </div>
   `;
 
-  // Animate bar in
   requestAnimationFrame(() => {
     setTimeout(() => {
       const fill = document.getElementById('goal-fill');
@@ -332,48 +319,37 @@ function renderSavingsGoal() {
   });
 
   document.getElementById('log-update-btn').addEventListener('click', logMonthlyUpdate);
-
-  // Check milestone celebration on load
   checkNewMilestone(pct);
 }
 
 function logMonthlyUpdate() {
-  const saved    = +document.getElementById('update-amount').value;
-  const note     = document.getElementById('update-note').value.trim();
+  const saved = +document.getElementById('update-amount').value;
+  const note  = document.getElementById('update-note').value.trim();
   if (!saved && saved !== 0) return;
 
-  const f              = window.state.finance;
-  const surplus        = Math.max(0, (f.income || 0) - (f.expenses || 0));
-  const monthlyReturn  = Math.round(((f.investments || 0) * ((f.roiRate ?? 5.5) / 100)) / 12);
-  const totalMonthly   = surplus + monthlyReturn;
-  const prevPct        = f.target ? Math.round((f.savings || 0) / f.target * 100) : 0;
+  const f             = window.state.finance;
+  const totalIncome   = (f.mitchIncome||0)+(f.samIncome||0) || f.income || 0;
+  const totalExpenses = (f.expHomeLoan||0)+(f.expJoint||0)+(f.expMitch||0)+(f.expSam||0) || f.expenses || 0;
+  const surplus       = Math.max(0, totalIncome - totalExpenses);
+  const roiMonthly    = Math.round(((f.investments||0)*((f.roiRate??5.5)/100))/12);
+  const totalMonthly  = surplus + roiMonthly;
 
-  // Update total savings
   f.savings = (f.savings || 0) + saved;
   if (!f.history) f.history = [];
-
-  const now = new Date();
-  const monthStr = now.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
-
-  f.history.push({
-    month:    monthStr,
-    saved,
-    expected: totalMonthly,
-    note,
-  });
-
+  const monthStr = new Date().toLocaleString('en-AU', { month: 'long', year: 'numeric' });
+  f.history.push({ month: monthStr, saved, expected: totalMonthly, note });
   saveState();
 
-  // Show reaction
-  const banner   = document.getElementById('reaction-banner');
-  const diff     = saved - surplus;
-  const newPct   = f.target ? Math.round(f.savings / f.target * 100) : 0;
+  const banner        = document.getElementById('reaction-banner');
+  const isCelebration = saved >= surplus;
 
-  if (diff >= 0) {
+  if (isCelebration) {
     const msg = CELEBRATE_MSGS[Math.floor(Math.random() * CELEBRATE_MSGS.length)];
     banner.className = 'reaction-banner celebrate';
     banner.innerHTML = `<div class="reaction-title">${msg.title}</div><div class="reaction-msg">${msg.msg}</div>`;
     launchConfetti();
+    setTimeout(launchConfetti, 2200);
+    setTimeout(launchConfetti, 5000);
   } else {
     const msg = SHAME_MSGS[Math.floor(Math.random() * SHAME_MSGS.length)];
     banner.className = 'reaction-banner shame';
@@ -383,21 +359,25 @@ function logMonthlyUpdate() {
   document.getElementById('update-amount').value = '';
   document.getElementById('update-note').value   = '';
 
-  // Re-render goal to update stats
-  setTimeout(() => renderSavingsGoal(), 400);
+  // Auto-fade after 11 seconds, then re-render
+  clearTimeout(window._bannerTimer);
+  window._bannerTimer = setTimeout(() => {
+    const b = document.getElementById('reaction-banner');
+    if (!b) return;
+    b.style.transition = 'opacity 0.8s ease';
+    b.style.opacity    = '0';
+    setTimeout(() => renderSavingsGoal(), 900);
+  }, 11000);
 }
 
 function checkNewMilestone(pct) {
   const f = window.state.finance;
   const prev = f.lastMilestonePct || 0;
-  const milestones = [25, 50, 75, 100];
-  for (const m of milestones) {
+  for (const m of [25, 50, 75, 100]) {
     if (pct >= m && prev < m) {
       f.lastMilestonePct = m;
       saveState();
-      if (m === 100) {
-        setTimeout(() => { launchConfetti(); launchConfetti(); }, 200);
-      }
+      if (m === 100) setTimeout(() => { launchConfetti(); launchConfetti(); }, 200);
     }
   }
 }
@@ -408,96 +388,390 @@ function launchConfetti() {
     const el = document.createElement('div');
     el.className = 'confetti-piece';
     el.style.cssText = `
-      left: ${Math.random() * 100}vw;
-      top: ${Math.random() * -40}px;
-      background: ${colours[Math.floor(Math.random() * colours.length)]};
-      width: ${4 + Math.random() * 8}px;
-      height: ${4 + Math.random() * 8}px;
-      animation-delay: ${Math.random() * 0.8}s;
-      animation-duration: ${1.8 + Math.random() * 1.2}s;
-    `;
+      left:${Math.random()*100}vw; top:${Math.random()*-40}px;
+      background:${colours[Math.floor(Math.random()*colours.length)]};
+      width:${4+Math.random()*8}px; height:${4+Math.random()*8}px;
+      animation-delay:${Math.random()*0.8}s;
+      animation-duration:${1.8+Math.random()*1.2}s;`;
     document.body.appendChild(el);
     el.addEventListener('animationend', () => el.remove());
   }
 }
 
-function calcProperty() {
-  const price      = +document.getElementById('prop-price').value || 0;
-  const depositPct = +document.getElementById('prop-deposit').value || 20;
-  const rate       = +document.getElementById('prop-rate').value  || 6.2;
-  const term       = +document.getElementById('prop-term').value  || 30;
-  const state      = document.getElementById('prop-state').value;
-  const rent       = +document.getElementById('prop-rent').value  || 0;
-  const annualInc  = +document.getElementById('prop-annual-income').value || 0;
-  const otherLoans = +document.getElementById('prop-other-loans').value   || 0;
+// ─────────────────────────────────────────────────────────
+// HOME PLANNING TAB
+// ─────────────────────────────────────────────────────────
 
-  if (!price) { document.getElementById('prop-result').innerHTML = `<p class="text-muted text-sm mt-12">Enter a purchase price to calculate.</p>`; return; }
+function renderHomePlanningPanel() {
+  const el = document.getElementById('fin-homeplan');
+  if (!el) return;
+  const f        = window.state.finance;
+  const isAnnual = f.inputMode === 'annual';
+  const show     = v => isAnnual ? (Math.round((v||0)*12) || '') : (v||'');
+  const depPct   = f.propDepositPct || 20;
+  const gr       = f.propGrowthRate || 3;
+  const stateOpts = Object.keys(STAMP_DUTY).map(s =>
+    `<option value="${s}" ${(f.propState||'NSW')===s?'selected':''}>${s}</option>`).join('');
 
-  const deposit    = Math.round(price * depositPct / 100);
-  const loanAmt    = price - deposit;
-  const stampDuty  = calcStampDuty(price, state);
-  const conveyance = 2000;
-  const inspection = 600;
-  const lmi        = depositPct < 20 ? Math.round(loanAmt * 0.02) : 0;
-  const totalCash  = deposit + stampDuty + conveyance + inspection + lmi;
-  const monthly    = Math.round(calcRepayment(loanAmt, rate, term));
-  const afterRent  = Math.max(0, monthly - rent);
+  el.innerHTML = `
+    <div class="homeplan-layout">
 
-  let serviceHtml = '';
-  if (annualInc) {
-    const testRepay  = Math.round(calcRepayment(loanAmt, rate + 3, term));
-    const maxRepay   = (annualInc / 12) * 0.28;
-    const totalOblig = testRepay + otherLoans;
-    const canService = totalOblig <= maxRepay;
-    serviceHtml = `
-      <div class="service-result ${canService ? 'service-ok' : 'service-no'}">
-        ${canService
-          ? `✓ Likely serviceable — test repayments ($${testRepay.toLocaleString()}/mo) are within 28% of your income.`
-          : `✗ May be tight — total obligations ($${totalOblig.toLocaleString()}/mo) exceed 28% of income ($${Math.round(maxRepay).toLocaleString()}/mo). Speak to a broker.`}
+      <!-- ── Left: Inputs ── -->
+      <div class="homeplan-form">
+
+        <div class="input-mode-toggle">
+          <button class="imt-btn ${!isAnnual?'active':''}" data-mode="monthly">Monthly</button>
+          <button class="imt-btn ${isAnnual?'active':''}"  data-mode="annual">Annual</button>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hp-section-title">💵 Income</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Mitch's take-home (${isAnnual?'annual':'monthly'})</label>
+              <input type="number" id="hp-mitch-income" value="${show(f.mitchIncome)}" placeholder="${isAnnual?'120000':'10000'}" />
+            </div>
+            <div class="form-group">
+              <label>Sam's take-home (${isAnnual?'annual':'monthly'})</label>
+              <input type="number" id="hp-sam-income" value="${show(f.samIncome)}" placeholder="${isAnnual?'80000':'6500'}" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hp-section-title">💰 Savings & Investments</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Current savings ($)</label>
+              <input type="number" id="hp-savings" value="${f.savings||''}" placeholder="150000" />
+            </div>
+            <div class="form-group">
+              <label>Current investments ($)</label>
+              <input type="number" id="hp-investments" value="${f.investments||''}" placeholder="Shares, ETFs…" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Investment growth rate (% p.a.)</label>
+              <input type="number" id="hp-roi" step="0.5" value="${f.roiRate||5.5}" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hp-section-title">💸 Expenses</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Home loan / rent repayments (${isAnnual?'annual':'monthly'})</label>
+              <input type="number" id="hp-exp-homeloan" value="${show(f.expHomeLoan)}" placeholder="${isAnnual?'48000':'4000'}" />
+            </div>
+            <div class="form-group">
+              <label>Joint expenses — food, bills, subs (${isAnnual?'annual':'monthly'})</label>
+              <input type="number" id="hp-exp-joint" value="${show(f.expJoint)}" placeholder="${isAnnual?'36000':'3000'}" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Mitch's personal expenses (${isAnnual?'annual':'monthly'})</label>
+              <input type="number" id="hp-exp-mitch" value="${show(f.expMitch)}" placeholder="${isAnnual?'12000':'1000'}" />
+            </div>
+            <div class="form-group">
+              <label>Sam's personal expenses (${isAnnual?'annual':'monthly'})</label>
+              <input type="number" id="hp-exp-sam" value="${show(f.expSam)}" placeholder="${isAnnual?'12000':'1000'}" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hp-section-title">🏠 Target Property</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Target house price ($)</label>
+              <input type="number" id="hp-prop-price" value="${f.propPrice||''}" placeholder="2000000" />
+            </div>
+            <div class="form-group">
+              <label>State</label>
+              <select id="hp-prop-state">${stateOpts}</select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Deposit target</label>
+              <div class="toggle-group" id="hp-dep-toggle">
+                <button class="toggle-btn ${depPct===20?'active':''}" data-val="20">20% (no LMI)</button>
+                <button class="toggle-btn ${depPct===10?'active':''}" data-val="10">10% + LMI</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Expected property growth (% p.a.)</label>
+              <div class="toggle-group" id="hp-growth-toggle">
+                <button class="toggle-btn ${gr===0?'active':''}" data-val="0">0%</button>
+                <button class="toggle-btn ${gr===3?'active':''}" data-val="3">3%</button>
+                <button class="toggle-btn ${gr===5?'active':''}" data-val="5">5%</button>
+                <button class="toggle-btn ${gr===7?'active':''}" data-val="7">7%</button>
+              </div>
+            </div>
+          </div>
+          <div id="hp-cost-breakdown"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hp-section-title">🏦 Serviceability — After Purchase</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Mortgage interest rate (%)</label>
+              <input type="number" id="hp-prop-rate" step="0.1" value="${f.propRate||6.2}" />
+            </div>
+            <div class="form-group">
+              <label>Loan term (years)</label>
+              <input type="number" id="hp-prop-term" value="${f.propTerm||30}" />
+            </div>
+          </div>
+          <div id="hp-serviceability"></div>
+        </div>
+
+        <button class="btn btn-primary w-full" id="hp-save-btn">Save & Update</button>
+        <p class="text-xs text-muted" style="margin-top:10px;line-height:1.6">Summary always shows monthly figures regardless of input mode. All estimates only — confirm with a mortgage broker.</p>
+      </div>
+
+      <!-- ── Right: Live Summary ── -->
+      <div class="homeplan-summary">
+        <div id="hp-summary"></div>
+      </div>
+
+    </div>
+  `;
+
+  _bindHomePlanEvents(el);
+  _updateHomeLivePreview();
+}
+
+function _bindHomePlanEvents(el) {
+  el.querySelectorAll('.imt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _autoSaveHomePlanInputs();
+      window.state.finance.inputMode = btn.dataset.mode;
+      saveState();
+      renderHomePlanningPanel();
+    });
+  });
+
+  el.querySelectorAll('#hp-dep-toggle .toggle-btn, #hp-growth-toggle .toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _updateHomeLivePreview();
+    });
+  });
+
+  let _debounce;
+  el.querySelectorAll('input[type="number"], select').forEach(inp => {
+    inp.addEventListener('input', () => { clearTimeout(_debounce); _debounce = setTimeout(_updateHomeLivePreview, 200); });
+  });
+
+  document.getElementById('hp-save-btn').addEventListener('click', saveHomePlanning);
+}
+
+function _readHomePlanInputs() {
+  const isAnnual = document.querySelector('.imt-btn[data-mode="annual"]')?.classList.contains('active');
+  const mo = id => { const v = +document.getElementById(id)?.value||0; return isAnnual ? Math.round(v/12) : v; };
+
+  return {
+    mitchIncome:    mo('hp-mitch-income'),
+    samIncome:      mo('hp-sam-income'),
+    savings:        +document.getElementById('hp-savings')?.value     || 0,
+    investments:    +document.getElementById('hp-investments')?.value || 0,
+    roiRate:        +document.getElementById('hp-roi')?.value          || 5.5,
+    expHomeLoan:    mo('hp-exp-homeloan'),
+    expJoint:       mo('hp-exp-joint'),
+    expMitch:       mo('hp-exp-mitch'),
+    expSam:         mo('hp-exp-sam'),
+    propPrice:      +document.getElementById('hp-prop-price')?.value  || 0,
+    propState:      document.getElementById('hp-prop-state')?.value   || 'NSW',
+    propDepositPct: +(document.querySelector('#hp-dep-toggle .toggle-btn.active')?.dataset.val   || 20),
+    propGrowthRate: +(document.querySelector('#hp-growth-toggle .toggle-btn.active')?.dataset.val || 3),
+    propRate:       +document.getElementById('hp-prop-rate')?.value   || 6.2,
+    propTerm:       +document.getElementById('hp-prop-term')?.value   || 30,
+  };
+}
+
+function _autoSaveHomePlanInputs() {
+  const d = _readHomePlanInputs();
+  Object.assign(window.state.finance, d);
+  window.state.finance.income   = d.mitchIncome + d.samIncome;
+  window.state.finance.expenses = d.expHomeLoan + d.expJoint + d.expMitch + d.expSam;
+  window.state.finance.target   = calcTotalCashNeeded(window.state.finance);
+  saveState();
+}
+
+function _updateHomeLivePreview() {
+  const d             = _readHomePlanInputs();
+  const totalIncome   = d.mitchIncome + d.samIncome;
+  const totalExpenses = d.expHomeLoan + d.expJoint + d.expMitch + d.expSam;
+  const surplus       = Math.max(0, totalIncome - totalExpenses);
+  const roiMonthly    = Math.round((d.investments * d.roiRate / 100) / 12);
+  const target        = calcTotalCashNeeded(d);
+
+  // Cost breakdown panel
+  if (d.propPrice > 0) {
+    const deposit = Math.round(d.propPrice * d.propDepositPct / 100);
+    const stamp   = calcStampDuty(d.propPrice, d.propState);
+    const lmi     = d.propDepositPct < 20 ? Math.round((d.propPrice - deposit) * 0.02) : 0;
+    const el = document.getElementById('hp-cost-breakdown');
+    if (el) el.innerHTML = `
+      <div class="hp-cost-box">
+        <div class="hp-cb-row"><span>Deposit (${d.propDepositPct}%)</span><span>$${deposit.toLocaleString()}</span></div>
+        <div class="hp-cb-row"><span>Stamp duty (${d.propState})</span><span>$${stamp.toLocaleString()}</span></div>
+        ${lmi ? `<div class="hp-cb-row"><span>LMI (est. &lt;20% deposit)</span><span>$${lmi.toLocaleString()}</span></div>` : ''}
+        <div class="hp-cb-row"><span>Conveyancing (est.)</span><span>$2,000</span></div>
+        <div class="hp-cb-row"><span>Building inspection (est.)</span><span>$600</span></div>
+        <div class="hp-cb-row hp-cb-total"><span>Total cash required</span><span>$${target.toLocaleString()}</span></div>
+        <div class="hp-cb-note">↑ This is your savings target on the Savings Goal tab</div>
       </div>`;
+  } else {
+    const el = document.getElementById('hp-cost-breakdown');
+    if (el) el.innerHTML = '';
   }
 
-  document.getElementById('prop-result').innerHTML = `
-    <div class="property-result">
-      <h3>${state} — $${price.toLocaleString()}</h3>
-      <div class="result-row"><span class="result-label">Deposit (${depositPct}%)</span><span class="result-value highlight">$${deposit.toLocaleString()}</span></div>
-      <div class="result-row"><span class="result-label">Loan Amount</span><span class="result-value">$${loanAmt.toLocaleString()}</span></div>
-      <div class="result-row"><span class="result-label">Stamp Duty (${state})</span><span class="result-value">$${stampDuty.toLocaleString()}</span></div>
-      <div class="result-row"><span class="result-label">Conveyancing (est.)</span><span class="result-value">$${conveyance.toLocaleString()}</span></div>
-      <div class="result-row"><span class="result-label">Building Inspection (est.)</span><span class="result-value">$${inspection.toLocaleString()}</span></div>
-      ${lmi ? `<div class="result-row"><span class="result-label">LMI (est. &lt;20% deposit)</span><span class="result-value">$${lmi.toLocaleString()}</span></div>` : ''}
-      <div class="result-row"><span class="result-label">Total Cash Required</span><span class="result-value highlight">$${totalCash.toLocaleString()}</span></div>
-      <div class="result-row"><span class="result-label">Monthly Repayment (P&I)</span><span class="result-value">$${monthly.toLocaleString()}/mo</span></div>
-      ${rent ? `<div class="result-row"><span class="result-label">Net Cost After Rent</span><span class="result-value green">$${afterRent.toLocaleString()}/mo</span></div>` : ''}
-      ${serviceHtml}
-      <div class="scenario-note">Estimates only. Stamp duty concessions may apply. Always confirm with a licensed conveyancer or mortgage broker.</div>
+  // Serviceability panel
+  if (d.propPrice > 0 && totalIncome > 0) {
+    const deposit     = Math.round(d.propPrice * d.propDepositPct / 100);
+    const loanAmt     = d.propPrice - deposit;
+    const monthly     = Math.round(calcRepayment(loanAmt, d.propRate, d.propTerm));
+    const testMonthly = Math.round(calcRepayment(loanAmt, d.propRate + 3, d.propTerm));
+    const expAfterBuy = d.expJoint + d.expMitch + d.expSam + monthly;
+    const afterSurp   = totalIncome - expAfterBuy;
+    const canService  = testMonthly <= totalIncome * 0.35;
+    const svcEl = document.getElementById('hp-serviceability');
+    if (svcEl) svcEl.innerHTML = `
+      <div class="hp-service ${canService?'hp-service-ok':'hp-service-risk'}">
+        <div class="hp-service-title">${canService ? '✓ Looks serviceable' : '⚠ May be tight'}</div>
+        <div class="hp-sr-row"><span>Combined monthly income</span><span>$${totalIncome.toLocaleString()}</span></div>
+        <div class="hp-sr-row"><span>New mortgage (P&I, ${d.propRate}%)</span><span>−$${monthly.toLocaleString()}</span></div>
+        <div class="hp-sr-row"><span>Joint + personal expenses</span><span>−$${(d.expJoint+d.expMitch+d.expSam).toLocaleString()}</span></div>
+        <div class="hp-sr-row hp-sr-result ${afterSurp>=0?'positive':'negative'}">
+          <span>Monthly surplus after purchase</span>
+          <span>${afterSurp>=0?'+':''}$${Math.round(afterSurp).toLocaleString()}</span>
+        </div>
+        <div class="hp-sr-note">Serviceability test uses +3% buffer rate: $${testMonthly.toLocaleString()}/mo</div>
+      </div>`;
+  } else {
+    const svcEl = document.getElementById('hp-serviceability');
+    if (svcEl) svcEl.innerHTML = '';
+  }
+
+  const sim        = runTimelineSimulation({ ...d });
+  const summaryEl  = document.getElementById('hp-summary');
+  if (summaryEl) summaryEl.innerHTML = _buildHomePlanSummaryHTML({
+    ...d, totalIncome, totalExpenses, surplus, roiMonthly, target, sim,
+    currentSavings: d.savings,
+  });
+}
+
+function _buildHomePlanSummaryHTML(d) {
+  const { totalIncome, totalExpenses, surplus, roiMonthly, target, sim, currentSavings,
+          mitchIncome, samIncome, expHomeLoan, expJoint, expMitch, expSam,
+          investments, roiRate, propGrowthRate } = d;
+  const totalMonthly = surplus + (roiMonthly || 0);
+  const remaining    = Math.max(0, target - currentSavings);
+  const pct          = target > 0 ? Math.min(100, Math.round(currentSavings / target * 100)) : 0;
+
+  if (!totalIncome && !totalExpenses && !target) return `
+    <div class="hp-empty-state">
+      <div style="font-size:40px;margin-bottom:12px">📊</div>
+      <h3>Your summary will appear here</h3>
+      <p>Fill in income, expenses, and a target house price to see your monthly cash flow and timeline.</p>
     </div>`;
+
+  let timelineHtml = '';
+  if (sim && sim.months !== null && target > 0) {
+    const yrs    = Math.floor(sim.months / 12);
+    const mos    = sim.months % 12;
+    const yrsStr = yrs > 0 ? `${yrs} yr${yrs>1?'s':''} ${mos > 0 ? `${mos} mo` : ''}`.trim() : `${mos} months`;
+    const dateStr = sim.readyDate.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
+    timelineHtml = `
+      <div class="hp-timeline-box">
+        <div class="hp-tl-label">At current rate, ready to buy in</div>
+        <div class="hp-tl-value">${yrsStr}</div>
+        <div class="hp-tl-date">Est. ready: ${dateStr}</div>
+        ${propGrowthRate > 0 ? `<div class="hp-tl-note">Property growing at ${propGrowthRate}% p.a. — target increases over time</div>` : ''}
+      </div>`;
+  } else if (target > 0 && currentSavings >= target) {
+    timelineHtml = `<div class="hp-timeline-box hp-tl-done"><div class="hp-tl-label">🏆 Goal reached! Ready to buy.</div></div>`;
+  }
+
+  return `
+    <div class="summary-panel">
+      <div class="summary-panel-title">Monthly Summary</div>
+
+      <div class="sp-section">
+        <div class="sp-row"><span class="sp-row-label">Mitch's income</span><span class="sp-row-val" style="color:var(--green)">$${(mitchIncome||0).toLocaleString()}</span></div>
+        <div class="sp-row"><span class="sp-row-label">Sam's income</span><span class="sp-row-val" style="color:var(--green)">$${(samIncome||0).toLocaleString()}</span></div>
+        <div class="sp-total-row"><span>Total income</span><span style="color:var(--green)">$${totalIncome.toLocaleString()}/mo</span></div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-row"><span class="sp-row-label">Home loan / rent</span><span class="sp-row-val" style="color:var(--orange)">−$${(expHomeLoan||0).toLocaleString()}</span></div>
+        <div class="sp-row"><span class="sp-row-label">Joint expenses</span><span class="sp-row-val" style="color:var(--orange)">−$${(expJoint||0).toLocaleString()}</span></div>
+        <div class="sp-row"><span class="sp-row-label">Mitch personal</span><span class="sp-row-val" style="color:var(--orange)">−$${(expMitch||0).toLocaleString()}</span></div>
+        <div class="sp-row"><span class="sp-row-label">Sam personal</span><span class="sp-row-val" style="color:var(--orange)">−$${(expSam||0).toLocaleString()}</span></div>
+        <div class="sp-total-row"><span>Total expenses</span><span style="color:var(--orange)">−$${totalExpenses.toLocaleString()}/mo</span></div>
+      </div>
+
+      <div class="sp-surplus-big ${surplus >= 0 ? 'positive' : 'negative'}">$${surplus.toLocaleString()}</div>
+      <div class="sp-surplus-label">Monthly Surplus</div>
+
+      ${roiMonthly > 0 ? `
+      <div class="sp-section">
+        <div class="sp-row"><span class="sp-row-label">📈 Investment returns (${roiRate||5.5}% p.a.)</span><span class="sp-row-val" style="color:var(--green)">+$${roiMonthly.toLocaleString()}/mo</span></div>
+        <div class="sp-total-row"><span>Total toward goal /mo</span><span style="color:var(--blue)">$${totalMonthly.toLocaleString()}</span></div>
+      </div>` : ''}
+
+      ${target > 0 ? `
+      <div class="sp-section">
+        <div class="sp-row"><span class="sp-row-label">Cash target</span><span class="sp-row-val">$${target.toLocaleString()}</span></div>
+        <div class="sp-row"><span class="sp-row-label">Saved so far</span><span class="sp-row-val" style="color:var(--green)">$${currentSavings.toLocaleString()}</span></div>
+        <div class="sp-row"><span class="sp-row-label">Still needed</span><span class="sp-row-val" style="color:var(--orange)">$${remaining.toLocaleString()}</span></div>
+        <div class="hp-prog-track"><div class="hp-prog-fill" style="width:${pct}%"></div></div>
+        <div class="hp-prog-lbl">${pct}% of target saved</div>
+      </div>
+      ${timelineHtml}` : ''}
+    </div>
+  `;
+}
+
+function saveHomePlanning() {
+  _autoSaveHomePlanInputs();
+  const btn = document.getElementById('hp-save-btn');
+  if (btn) {
+    btn.textContent = 'Saved ✓';
+    btn.style.background = 'var(--green)';
+    setTimeout(() => { btn.textContent = 'Save & Update'; btn.style.background = ''; }, 2000);
+  }
+  renderSavingsGoal();
 }
 
 // ─────────────────────────────────────────────────────────
-// ── 2027 Property Plan
+// 2027 AREAS TAB
 // ─────────────────────────────────────────────────────────
 
 const AREAS_2027 = {
   'Inner West': {
     icon: '🏘️', color: 'var(--orange)',
     suburbs: 'Newtown · Leichhardt · Balmain · Marrickville · Dulwich Hill',
-    house2: 1550000, house3: 1950000,
-    town2:  1100000, town3:  1350000,
+    house2: 1550000, house3: 1950000, town2: 1100000, town3: 1350000,
     source: 'Domain/CoreLogic median estimates, May 2025',
   },
   'Lower North Shore': {
     icon: '🌊', color: 'var(--blue)',
     suburbs: 'Mosman · Neutral Bay · Cremorne · Kirribilli · Waverton',
-    house2: 2600000, house3: 3300000,
-    town2:  1550000, town3:  1800000,
+    house2: 2600000, house3: 3300000, town2: 1550000, town3: 1800000,
     source: 'Domain/CoreLogic median estimates, May 2025',
   },
   'North Shore': {
     icon: '🌳', color: 'var(--green)',
     suburbs: 'Chatswood · Lane Cove · Willoughby · Lindfield · Pymble',
-    house2: 1800000, house3: 2350000,
-    town2:  1250000, town3:  1550000,
+    house2: 1800000, house3: 2350000, town2: 1250000, town3: 1550000,
     source: 'Domain/CoreLogic median estimates, May 2025',
   },
 };
@@ -516,12 +790,9 @@ function build2027PanelHTML(p) {
 
   return `
     <div class="plan2027-layout">
-
-      <!-- ── Left: Input form ── -->
       <div class="plan2027-form">
         <div class="card">
           <div class="section-title">About You</div>
-
           <div class="form-group" style="margin-bottom:12px">
             <label>Are you a first home buyer?</label>
             <div class="toggle-group" id="fhb-toggle">
@@ -529,7 +800,6 @@ function build2027PanelHTML(p) {
               <button class="toggle-btn ${fhb==='no'?'active':''}"  data-val="no">No</button>
             </div>
           </div>
-
           <div class="form-group" style="margin-bottom:12px">
             <label>Buying alone or with a partner?</label>
             <div class="toggle-group" id="partner-toggle">
@@ -537,15 +807,12 @@ function build2027PanelHTML(p) {
               <button class="toggle-btn ${partner==='partner'?'active':''}" data-val="partner">With partner</button>
             </div>
           </div>
-
           <div class="form-group" style="margin-bottom:16px">
             <label>Combined gross annual income ($)</label>
             <input type="number" id="p27-income" placeholder="e.g. 180000" value="${income}" />
           </div>
-
           <hr class="divider" />
           <div class="section-title" style="margin-top:4px">Your Target</div>
-
           <div class="form-group" style="margin-bottom:12px">
             <label>How many bedrooms?</label>
             <div class="toggle-group" id="beds-toggle">
@@ -554,7 +821,6 @@ function build2027PanelHTML(p) {
               <button class="toggle-btn ${bedrooms==='either'?'active':''}" data-val="either">Either</button>
             </div>
           </div>
-
           <div class="form-group" style="margin-bottom:12px">
             <label>Property type?</label>
             <div class="toggle-group" id="type-toggle">
@@ -563,9 +829,8 @@ function build2027PanelHTML(p) {
               <button class="toggle-btn ${propType==='either'?'active':''}" data-val="either">Either</button>
             </div>
           </div>
-
           <div class="form-group" style="margin-bottom:12px">
-            <label>Which areas? (select to filter)</label>
+            <label>Which areas?</label>
             <div class="toggle-group" id="area-toggle">
               <button class="toggle-btn ${areasPref==='all'?'active':''}"         data-val="all">All three</button>
               <button class="toggle-btn ${areasPref==='Inner West'?'active':''}"  data-val="Inner West">Inner West</button>
@@ -573,7 +838,6 @@ function build2027PanelHTML(p) {
               <button class="toggle-btn ${areasPref==='North Shore'?'active':''}" data-val="North Shore">North Shore</button>
             </div>
           </div>
-
           <div class="form-group" style="margin-bottom:16px">
             <label>Target deposit</label>
             <div class="toggle-group" id="dep-toggle">
@@ -581,20 +845,16 @@ function build2027PanelHTML(p) {
               <button class="toggle-btn ${depositPct==='10'?'active':''}" data-val="10">10% (with LMI)</button>
             </div>
           </div>
-
           <hr class="divider" />
           <div class="section-title" style="margin-top:4px">Your Savings</div>
-
           <div class="form-group" style="margin-bottom:12px">
             <label>Property deposit savings so far ($)</label>
             <input type="number" id="p27-savings" placeholder="e.g. 80000" value="${propSavings}" />
           </div>
-
           <div class="form-group" style="margin-bottom:12px">
             <label>Monthly contribution to deposit ($)</label>
             <input type="number" id="p27-monthly" placeholder="e.g. 3000" value="${monthlyAdd}" />
           </div>
-
           <div class="form-group" style="margin-bottom:16px">
             <label>Assume property price growth per year (%)</label>
             <div class="toggle-group" id="growth-toggle">
@@ -604,28 +864,21 @@ function build2027PanelHTML(p) {
               <button class="toggle-btn ${growthRate==='7'?'active':''}" data-val="7">7% p.a.</button>
             </div>
           </div>
-
           <button class="btn btn-primary w-full" id="save-plan2027-btn">Update Plan</button>
           <p class="text-xs text-muted" style="margin-top:10px;line-height:1.6">
-            Price estimates based on CoreLogic/Domain median data, May 2025. Updated periodically — check
+            Price estimates based on CoreLogic/Domain median data, May 2025. Check
             <a href="https://www.domain.com.au" target="_blank" style="color:var(--blue)">Domain</a> or
             <a href="https://www.realestate.com.au" target="_blank" style="color:var(--blue)">REA</a> for live listings.
           </p>
         </div>
       </div>
-
-      <!-- ── Right: Results ── -->
-      <div class="plan2027-results" id="plan2027-results">
-        ${render2027Results(p)}
-      </div>
+      <div class="plan2027-results" id="plan2027-results">${render2027Results(p)}</div>
     </div>
   `;
 }
 
 function savePlan2027() {
   const p = window.state.plan2027;
-
-  // Read toggle selections
   p.fhb        = document.querySelector('#fhb-toggle .toggle-btn.active')?.dataset.val      || '';
   p.partner    = document.querySelector('#partner-toggle .toggle-btn.active')?.dataset.val  || '';
   p.bedrooms   = document.querySelector('#beds-toggle .toggle-btn.active')?.dataset.val     || '3';
@@ -636,16 +889,53 @@ function savePlan2027() {
   p.income     = +document.getElementById('p27-income')?.value  || 0;
   p.propSavings= +document.getElementById('p27-savings')?.value || 0;
   p.monthlyAdd = +document.getElementById('p27-monthly')?.value || 0;
-
   saveState();
-
-  // Re-render results
   const res = document.getElementById('plan2027-results');
   if (res) res.innerHTML = render2027Results(p);
-
   const btn = document.getElementById('save-plan2027-btn');
   btn.textContent = 'Updated ✓'; btn.style.background = 'var(--green)';
   setTimeout(() => { btn.textContent = 'Update Plan'; btn.style.background = ''; }, 2000);
+}
+
+function renderSavingsTimelineCard(p) {
+  const currentSavings = p.propSavings || 0;
+  const monthlyAdd     = p.monthlyAdd  || 0;
+  if (!monthlyAdd && !currentSavings) return '';
+
+  const allPrices    = Object.values(AREAS_2027).flatMap(a => [a.house3, a.town3]);
+  const cheapest     = Math.min(...allPrices);
+  const depPct       = +(p.depositPct || 20) / 100;
+  const growthRate   = +(p.growthRate  || 3)  / 100;
+  const cheapestArea = Object.entries(AREAS_2027).find(([,a]) => a.house3 === cheapest || a.town3 === cheapest)?.[0] || '';
+
+  let months = 0, savings = currentSavings, price = cheapest;
+  const MAX  = 360;
+  while (months < MAX) {
+    const dep    = Math.round(price * depPct);
+    const stamp  = calcStampDuty(Math.round(price), 'NSW');
+    const lmi    = depPct < 0.2 ? Math.round((price - dep) * 0.02) : 0;
+    if (savings >= dep + stamp + lmi + 8000) break;
+    months++;
+    savings += monthlyAdd;
+    price = cheapest * Math.pow(1 + growthRate, months / 12);
+  }
+
+  const readyDate = new Date();
+  readyDate.setMonth(readyDate.getMonth() + months);
+  const yrs    = Math.floor(months / 12), mos = months % 12;
+  const timeStr = months >= MAX ? 'over 30 years — consider increasing savings'
+    : yrs > 0 ? `${yrs} year${yrs>1?'s':''} ${mos > 0 ? mos+' months' : ''}`.trim()
+    : `${mos} months`;
+  const dateStr = readyDate.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
+
+  return `
+    <div class="savings-timeline-card">
+      <div class="stc-icon">📅</div>
+      <div class="stc-body">
+        <div class="stc-headline">At <strong>$${monthlyAdd.toLocaleString()}/mo</strong>, ready to buy in <strong>${timeStr}</strong></div>
+        <div class="stc-sub">Est. ready: ${dateStr} · Cheapest option (${cheapestArea}) · ${p.growthRate||3}% annual growth assumed</div>
+      </div>
+    </div>`;
 }
 
 function render2027Results(p) {
@@ -659,81 +949,63 @@ function render2027Results(p) {
   const areasPref      = p.areasPref    || 'all';
   const deadline2027   = new Date('2027-12-31');
 
-  if (!currentSavings && !monthlyAdd) {
-    return `
-      <div class="plan2027-empty">
-        <div style="font-size:48px;margin-bottom:12px">🏡</div>
-        <h3>Fill in your details</h3>
-        <p>Complete the form on the left and click <strong>Update Plan</strong> to see how achievable your 2027 property goal is.</p>
-      </div>`;
-  }
+  if (!currentSavings && !monthlyAdd) return `
+    <div class="plan2027-empty">
+      <div style="font-size:48px;margin-bottom:12px">🏡</div>
+      <h3>Fill in your details</h3>
+      <p>Complete the form on the left and click <strong>Update Plan</strong> to see how achievable your 2027 property goal is.</p>
+    </div>`;
 
   const areas = areasPref === 'all'
     ? Object.entries(AREAS_2027)
     : Object.entries(AREAS_2027).filter(([name]) => name === areasPref);
 
-  return areas.map(([areaName, area]) => {
-    // Pick the right base price
+  const areaCards = areas.map(([areaName, area]) => {
     let basePrice;
-    if (bedrooms === '2')      basePrice = propType === 'town' ? area.town2 : propType === 'house' ? area.house2 : Math.min(area.house2, area.town2);
-    else if (bedrooms === '3') basePrice = propType === 'town' ? area.town3 : propType === 'house' ? area.house3 : Math.min(area.house3, area.town3);
-    else                       basePrice = propType === 'town' ? area.town3 : propType === 'house' ? area.house3 : Math.min(area.house3, area.town3);
+    if (bedrooms === '2')      basePrice = propType==='town' ? area.town2 : propType==='house' ? area.house2 : Math.min(area.house2, area.town2);
+    else if (bedrooms === '3') basePrice = propType==='town' ? area.town3 : propType==='house' ? area.house3 : Math.min(area.house3, area.town3);
+    else                       basePrice = propType==='town' ? area.town3 : propType==='house' ? area.house3 : Math.min(area.house3, area.town3);
 
-    const priceLabel = bedrooms === 'either'
-      ? `${bedrooms === 'either' ? '2-3' : bedrooms} bed ${propType === 'either' ? 'house/townhouse' : propType === 'town' ? 'townhouse' : 'house'}`
-      : `${bedrooms} bed ${propType === 'either' ? 'house/townhouse' : propType === 'town' ? 'townhouse' : 'house'}`;
+    const priceLabel = `${bedrooms==='either'?'2-3':bedrooms} bed ${propType==='either'?'house/townhouse':propType==='town'?'townhouse':'house'}`;
 
-    // Calculate time needed iteratively (price grows as time passes)
-    let months = 0;
-    let savings = currentSavings;
-    let price   = basePrice;
+    let months = 0, savings = currentSavings, price = basePrice;
     const MAX_MONTHS = 360;
-
     while (months < MAX_MONTHS) {
       const deposit    = Math.round(price * depositPct);
       const stampDuty  = calcStampDuty(price, 'NSW');
       const lmi        = depositPct < 0.2 ? Math.round((price - deposit) * 0.02) : 0;
-      const otherCosts = 8000; // conveyancing + inspection
-      const totalNeeded = deposit + stampDuty + lmi + otherCosts;
-
-      if (savings >= totalNeeded) break;
-
+      if (savings >= deposit + stampDuty + lmi + 8000) break;
       months++;
       savings += monthlyAdd;
-      // Apply monthly price growth
       price = basePrice * Math.pow(1 + growthRate, months / 12);
     }
 
-    // Final figures at the projected month
-    const finalPrice    = basePrice * Math.pow(1 + growthRate, months / 12);
-    const finalDeposit  = Math.round(finalPrice * depositPct);
-    const finalStamp    = calcStampDuty(Math.round(finalPrice), 'NSW');
-    const finalLMI      = depositPct < 0.2 ? Math.round((finalPrice - finalDeposit) * 0.02) : 0;
-    const finalOther    = 8000;
-    const finalTotal    = finalDeposit + finalStamp + finalLMI + finalOther;
-    const stillNeeded   = Math.max(0, finalTotal - currentSavings);
+    const finalPrice   = basePrice * Math.pow(1 + growthRate, months / 12);
+    const finalDeposit = Math.round(finalPrice * depositPct);
+    const finalStamp   = calcStampDuty(Math.round(finalPrice), 'NSW');
+    const finalLMI     = depositPct < 0.2 ? Math.round((finalPrice - finalDeposit) * 0.02) : 0;
+    const finalOther   = 8000;
+    const finalTotal   = finalDeposit + finalStamp + finalLMI + finalOther;
+    const stillNeeded  = Math.max(0, finalTotal - currentSavings);
 
-    // Ready date
     const readyDate    = new Date();
     readyDate.setMonth(readyDate.getMonth() + months);
     const by2027       = readyDate <= deadline2027;
     const monthsTo2027 = Math.round((deadline2027 - new Date()) / (1000 * 60 * 60 * 24 * 30.4));
+    const readyMonthStr = readyDate.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
 
-    // Progress
-    const nowDeposit   = Math.round(basePrice * depositPct);
-    const nowStamp     = calcStampDuty(basePrice, 'NSW');
-    const nowLMI       = depositPct < 0.2 ? Math.round((basePrice - nowDeposit) * 0.02) : 0;
-    const nowTotal     = nowDeposit + nowStamp + nowLMI + 8000;
-    const pct          = Math.min(100, Math.round((currentSavings / nowTotal) * 100));
+    const nowDeposit  = Math.round(basePrice * depositPct);
+    const nowStamp    = calcStampDuty(basePrice, 'NSW');
+    const nowLMI      = depositPct < 0.2 ? Math.round((basePrice - nowDeposit) * 0.02) : 0;
+    const nowTotal    = nowDeposit + nowStamp + nowLMI + 8000;
+    const pct         = Math.min(100, Math.round((currentSavings / nowTotal) * 100));
 
-    // Serviceability check
     let serviceHtml = '';
     if (income) {
-      const loanNeeded  = Math.round(finalPrice - finalDeposit);
-      const testRate    = 6.5 + 3; // current est. + buffer
-      const repayment   = Math.round(calcRepayment(loanNeeded, testRate, 30));
-      const maxRepay    = Math.round((income / 12) * 0.35);
-      const canService  = repayment <= maxRepay;
+      const loanNeeded = Math.round(finalPrice - finalDeposit);
+      const repayment  = Math.round(calcRepayment(loanNeeded, 9.5, 30));
+      const maxRepay   = Math.round((income / 12) * 0.35);
+      const canService = repayment <= maxRepay;
       serviceHtml = `
         <div class="plan-service ${canService ? 'ok' : 'tight'}">
           ${canService
@@ -742,10 +1014,6 @@ function render2027Results(p) {
         </div>`;
     }
 
-    // Month/year label
-    const readyMonthStr = readyDate.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
-
-    // Timeline bar: today → ready date → 2027 end
     const totalSpan    = Math.max(monthsTo2027, months);
     const progressFrac = Math.min(1, months / totalSpan);
 
@@ -781,7 +1049,6 @@ function render2027Results(p) {
           </div>
         </div>
 
-        <!-- Deposit breakdown -->
         <div class="area-breakdown">
           <div class="abd-row"><span>Deposit (${depositPct * 100}%)</span><span>$${finalDeposit.toLocaleString()}</span></div>
           <div class="abd-row"><span>NSW Stamp Duty</span><span>$${finalStamp.toLocaleString()}</span></div>
@@ -790,11 +1057,10 @@ function render2027Results(p) {
           <div class="abd-row abd-total"><span>Total required</span><span>$${finalTotal.toLocaleString()}</span></div>
         </div>
 
-        <!-- Progress bar -->
         <div class="area-progress">
           <div class="area-progress-label">
             <span>Your current savings</span>
-            <span style="color:${pct >= 100 ? 'var(--green)' : 'var(--text-muted)'}">${pct}% of today's target</span>
+            <span style="color:${pct>=100?'var(--green)':'var(--text-muted)'}">${pct}% of today's target</span>
           </div>
           <div class="progress-track" style="height:8px">
             <div class="progress-fill progress-green" style="width:${pct}%"></div>
@@ -802,15 +1068,14 @@ function render2027Results(p) {
           <div class="area-progress-sub">$${currentSavings.toLocaleString()} saved · $${stillNeeded.toLocaleString()} still needed</div>
         </div>
 
-        <!-- Timeline -->
         <div class="area-timeline">
           <div class="timeline-label">
             <span>Now</span>
-            <span>${by2027 ? '🎯 Ready: ' + readyMonthStr : '📅 Ready: ' + readyMonthStr}</span>
+            <span>${by2027 ? '🎯 Ready: '+readyMonthStr : '📅 Ready: '+readyMonthStr}</span>
             <span>Dec 2027</span>
           </div>
           <div class="timeline-track">
-            <div class="timeline-fill ${by2027 ? 'tl-green' : 'tl-orange'}" style="width:${Math.min(100, Math.round(progressFrac * 100))}%"></div>
+            <div class="timeline-fill ${by2027 ? 'tl-green' : 'tl-orange'}" style="width:${Math.min(100, Math.round(progressFrac*100))}%"></div>
             <div class="timeline-marker-2027" style="left:${Math.min(100, Math.round(monthsTo2027/totalSpan*100))}%"></div>
           </div>
           ${!by2027 ? `
@@ -827,9 +1092,11 @@ function render2027Results(p) {
         <div class="area-source">📊 ${area.source}</div>
       </div>`;
   }).join('');
+
+  return renderSavingsTimelineCard(p) + areaCards;
 }
 
-// Bind toggle buttons inside the 2027 panel
+// Toggle buttons (shared)
 document.addEventListener('click', e => {
   const btn = e.target.closest('.toggle-btn');
   if (!btn) return;
