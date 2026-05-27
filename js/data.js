@@ -37,6 +37,7 @@ const DB = {
       reminders:  [],
       onboardees: [],
     },
+    stocks: [],
   },
 
   load() {

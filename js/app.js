@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   go(renderMail,      'renderMail');
   go(renderPerplexity,'renderPerplexity');
   go(renderWork,      'renderWork');
+  go(renderStocks,    'renderStocks');
 
   // Hide bird loader — always runs regardless of render errors
   setTimeout(() => {
