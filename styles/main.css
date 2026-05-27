@@ -1,5 +1,6 @@
 /* ── Design Tokens ── */
 :root {
+  --dev-header-h: 36px;
   --bg:          #0d0d0f;
   --surface:     #17171a;
   --surface-2:   #1f1f24;
@@ -59,11 +60,146 @@ body {
 .workspace::-webkit-scrollbar-track { background: transparent; }
 .workspace::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
 
+/* ── Dev Header ── */
+.dev-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--dev-header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 24px;
+  gap: 12px;
+  backdrop-filter: blur(8px);
+}
+
+.flask-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flask-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+  transition: background var(--transition), box-shadow var(--transition);
+}
+.flask-dot.flask-green  { background: #4caf78; box-shadow: 0 0 7px rgba(76,175,120,0.7); border-color: #4caf78; }
+.flask-dot.flask-amber  { background: #facc15; box-shadow: 0 0 7px rgba(250,204,21,0.6); border-color: #facc15; }
+.flask-dot.flask-red    { background: #ff7730; box-shadow: 0 0 7px rgba(255,119,48,0.7); border-color: #ff7730; }
+
+.flask-status-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 500;
+  min-width: 56px;
+  letter-spacing: 0.2px;
+}
+
+.flask-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.flask-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.14); background: var(--surface-3); }
+.flask-btn-start:hover { color: var(--green);  border-color: var(--green);  background: var(--green-glow); }
+.flask-btn-stop:hover  { color: var(--orange); border-color: var(--orange); background: var(--orange-glow); }
+
+.flask-popover {
+  position: fixed;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  width: 280px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  animation: fadeSlide 0.2s ease both;
+}
+
+.flask-popover-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.flask-popover-cmd {
+  display: block;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--green);
+  margin-bottom: 10px;
+  word-break: break-all;
+  letter-spacing: 0.2px;
+}
+
+.flask-popover-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.flask-popover-copy {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all var(--transition);
+}
+.flask-popover-copy:hover { color: var(--green); border-color: var(--green); background: var(--green-glow); }
+
+.flask-popover-check {
+  background: var(--orange);
+  border: none;
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background var(--transition);
+}
+.flask-popover-check:hover { background: #ff8f50; }
+
+.flask-popover-note {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
 /* ── Sections ── */
 .section {
   display: none;
   padding: 40px 44px;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--dev-header-h));
   animation: fadeSlide 0.3s var(--transition) both;
 }
 .section.active { display: block; }

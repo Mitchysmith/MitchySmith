@@ -3,14 +3,14 @@
 /* Override section padding for the full-height layout */
 #section-stocks {
   padding: 0;
-  height: calc(100vh - 0px);
+  height: calc(100vh - var(--dev-header-h));
   overflow: hidden;
 }
 
 .stocks-layout {
   display: grid;
   grid-template-columns: 240px 1fr;
-  height: 100vh;
+  height: calc(100vh - var(--dev-header-h));
   gap: 0;
 }
 
