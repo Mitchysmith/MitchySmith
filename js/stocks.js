@@ -59,6 +59,168 @@ function initStocks() {
   if (!window.state.stocks) window.state.stocks = [];
 }
 
+// ── Yahoo Finance helpers ──
+
+function _getYFTicker(stock) {
+  const ex     = (stock.exchange || '').toUpperCase();
+  const ticker = (stock.ticker   || '').toUpperCase();
+  if (ex === 'ASX')   return ticker + '.AX';
+  if (ex === 'LSE')   return ticker + '.L';
+  if (ex === 'TSX')   return ticker + '.TO';
+  if (ex === 'TSX-V') return ticker + '.V';
+  if (ex === 'HKE')   return ticker + '.HK';
+  return ticker;
+}
+
+async function fetchAnalystData(stockId, el) {
+  const stock = getStock(stockId);
+  if (!stock) return;
+
+  // Disable the button while loading
+  const btn = el?.querySelector(`[data-action="fetch-research"][data-id="${stockId}"]`);
+  if (btn) { btn.textContent = '↻ Fetching…'; btn.disabled = true; }
+
+  try {
+    const yfTicker = _getYFTicker(stock);
+    const apiUrl   = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yfTicker)}?modules=financialData,recommendationTrend,price`;
+    const proxy    = 'https://api.allorigins.win/raw?url=';
+    const res      = await fetch(proxy + encodeURIComponent(apiUrl));
+
+    if (!res.ok) throw new Error(`HTTP ${res.status} from proxy`);
+    const json = await res.json();
+
+    const result = json?.quoteSummary?.result?.[0];
+    if (!result) {
+      const errMsg = json?.quoteSummary?.error?.description || `No data found for ${yfTicker}`;
+      throw new Error(errMsg);
+    }
+
+    const fd = result.financialData       || {};
+    const rt = result.recommendationTrend?.trend?.[0] || {};
+    const pr = result.price               || {};
+
+    stock.analystData = {
+      yfTicker,
+      targetLow:          fd.targetLowPrice?.raw          ?? null,
+      targetMean:         fd.targetMeanPrice?.raw         ?? null,
+      targetHigh:         fd.targetHighPrice?.raw         ?? null,
+      numAnalysts:        fd.numberOfAnalystOpinions?.raw ?? 0,
+      recommendationMean: fd.recommendationMean?.raw      ?? null,
+      recommendationKey:  fd.recommendationKey            ?? null,
+      strongBuy:  rt.strongBuy  || 0,
+      buy:        rt.buy        || 0,
+      hold:       rt.hold       || 0,
+      sell:       rt.sell       || 0,
+      strongSell: rt.strongSell || 0,
+      livePrice:  pr.regularMarketPrice?.raw ?? null,
+      fetchedAt:  today(),
+      error:      null,
+    };
+
+    // Pre-fill current price if user hasn't entered one yet
+    if (!stock.actuals.currentPrice && stock.analystData.livePrice) {
+      stock.actuals.currentPrice = stock.analystData.livePrice;
+    }
+
+  } catch (err) {
+    stock.analystData = { error: err.message, fetchedAt: today() };
+  }
+
+  saveState();
+  _reRenderDetail(el);
+}
+
+function _renderAnalystPanel(stock) {
+  const d = stock.analystData;
+
+  const header = (extraBtn) => `
+    <div class="analyst-panel-header">
+      <span class="analyst-panel-title">Analyst Consensus</span>
+      ${extraBtn}
+    </div>`;
+
+  if (!d) {
+    return `
+      <div class="analyst-panel">
+        ${header(`<button class="analyst-fetch-btn" data-action="fetch-research" data-id="${stock.id}">↗ Fetch Research</button>`)}
+        <div class="analyst-empty">Click "Fetch Research" to pull analyst target prices and ratings from Yahoo Finance.</div>
+      </div>`;
+  }
+
+  const refreshBtn = `<span class="analyst-fetched">Updated ${d.fetchedAt}</span>
+    <button class="analyst-fetch-btn" data-action="fetch-research" data-id="${stock.id}">↻ Refresh</button>`;
+
+  if (d.error) {
+    return `
+      <div class="analyst-panel">
+        ${header(refreshBtn)}
+        <div class="analyst-error">Could not fetch data — ${escS(d.error)}. Check the ticker / exchange is correct (e.g. ASX for Australian stocks).</div>
+      </div>`;
+  }
+
+  const CONS_MAP = {
+    strongBuy:  { label: 'Strong Buy',   cls: 'outperform'   },
+    buy:        { label: 'Outperform',   cls: 'outperform'   },
+    hold:       { label: 'Neutral',      cls: 'neutral'      },
+    sell:       { label: 'Underperform', cls: 'underperform' },
+    strongSell: { label: 'Underperform', cls: 'underperform' },
+  };
+  const cons = CONS_MAP[d.recommendationKey] || { label: 'N/D', cls: 'neutral' };
+
+  const total     = (d.strongBuy||0) + (d.buy||0) + (d.hold||0) + (d.sell||0) + (d.strongSell||0);
+  const buyCount  = (d.strongBuy||0) + (d.buy||0);
+  const holdCount = d.hold || 0;
+  const sellCount = (d.sell||0) + (d.strongSell||0);
+  const buyPct    = total > 0 ? Math.round(buyCount  / total * 100) : 0;
+  const holdPct   = total > 0 ? Math.round(holdCount / total * 100) : 0;
+  const sellPct   = total > 0 ? Math.round(sellCount / total * 100) : 0;
+
+  const cp     = stock.actuals?.currentPrice || d.livePrice || 0;
+  const tgt    = d.targetMean;
+  const upside = tgt && cp > 0 ? ((tgt / cp - 1) * 100).toFixed(1) : null;
+
+  return `
+    <div class="analyst-panel">
+      ${header(refreshBtn)}
+      <div class="analyst-body">
+
+        <div class="analyst-consensus-col">
+          <div class="analyst-consensus ${cons.cls}">${cons.label}</div>
+          ${d.numAnalysts ? `<div class="analyst-count">${d.numAnalysts} analyst${d.numAnalysts !== 1 ? 's' : ''}</div>` : ''}
+          ${d.recommendationMean !== null ? `<div class="analyst-mean">Mean score ${d.recommendationMean.toFixed(1)} / 5</div>` : ''}
+        </div>
+
+        ${tgt !== null ? `
+        <div class="analyst-targets-col">
+          <div class="analyst-target-label">Price Target (mean)</div>
+          <div class="analyst-target-mean">$${tgt.toFixed(2)}</div>
+          ${d.targetLow !== null && d.targetHigh !== null
+            ? `<div class="analyst-target-range">Range $${d.targetLow.toFixed(2)} – $${d.targetHigh.toFixed(2)}</div>`
+            : ''}
+          ${upside !== null
+            ? `<div class="analyst-upside ${+upside >= 0 ? 'positive' : 'negative'}">${+upside >= 0 ? '+' : ''}${upside}% vs current</div>`
+            : ''}
+        </div>` : ''}
+
+        ${total > 0 ? `
+        <div class="analyst-breakdown-col">
+          <div class="analyst-bar-label">Buy / Hold / Sell breakdown</div>
+          <div class="analyst-bar">
+            ${buyPct  > 0 ? `<div class="analyst-bar-buy"  style="width:${buyPct}%"></div>`  : ''}
+            ${holdPct > 0 ? `<div class="analyst-bar-hold" style="width:${holdPct}%"></div>` : ''}
+            ${sellPct > 0 ? `<div class="analyst-bar-sell" style="width:${sellPct}%"></div>` : ''}
+          </div>
+          <div class="analyst-bar-counts">
+            <span class="abc-buy">${buyCount} buy</span>
+            <span class="abc-hold">${holdCount} hold</span>
+            <span class="abc-sell">${sellCount} sell</span>
+          </div>
+        </div>` : ''}
+
+      </div>
+    </div>`;
+}
+
 // ── CRUD ──
 
 function createStock(ticker, name, sector, exchange, currency) {
@@ -337,6 +499,7 @@ function _renderStockDetail(stock) {
       </div>
       <div class="sdh-actions">
         <span class="sdh-rating ${rCls}">${res.rating}</span>
+        <button class="sdh-action-btn" data-action="fetch-research" data-id="${stock.id}">↗ Research</button>
         <button class="sdh-export-btn" data-action="export-excel" data-id="${stock.id}">Export Excel</button>
         <button class="sdh-action-btn danger" data-action="delete-stock" data-id="${stock.id}">Delete</button>
       </div>
@@ -505,6 +668,8 @@ function _renderModelTab(stock, res) {
   const curPrice  = a.currentPrice || 0;
 
   return `
+    ${_renderAnalystPanel(stock)}
+
     <div class="scenario-bar">
       <span class="scenario-label">Scenario</span>
       ${scenarioBtns}
@@ -767,6 +932,11 @@ function _bindStocksEvents(el) {
       if (!confirm('Delete this stock and all its data?')) return;
       deleteStock(id);
       _reRenderAll(el);
+      return;
+    }
+
+    if (action === 'fetch-research') {
+      fetchAnalystData(id, el);
       return;
     }
 
@@ -1100,6 +1270,8 @@ function _showCreateModal(el) {
     _activeStockTab  = 'model';
     overlay.remove();
     _reRenderAll(el);
+    // Auto-fetch analyst data — will re-render when complete
+    fetchAnalystData(stock.id, el);
   });
 
   // Allow Enter to submit
