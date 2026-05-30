@@ -832,7 +832,8 @@ function _buildHomePlanSummaryHTML(d) {
           mitchIncome, samIncome, expHomeLoan, expJoint, expMitch, expSam,
           investments, roiRate, propGrowthRate, loans, netMonthly,
           loanRepayments, totalStrata, totalRental } = d;
-  const totalMonthly = surplus + (roiMonthly || 0);
+  const net          = totalIncome - totalExpenses;
+  const totalMonthly = Math.max(0, net) + (roiMonthly || 0);
   const remaining    = Math.max(0, target - currentSavings);
   const pct          = target > 0 ? Math.min(100, Math.round(currentSavings / target * 100)) : 0;
 
@@ -923,8 +924,8 @@ function _buildHomePlanSummaryHTML(d) {
         <div class="sp-total-row"><span>Total expenses</span><span style="color:var(--orange)">−$${totalExpenses.toLocaleString()}/mo</span></div>
       </div>
 
-      <div class="sp-surplus-big ${(netMonthly??surplus) >= 0 ? 'positive' : 'negative'}">${(netMonthly??surplus) >= 0 ? '' : '−'}$${Math.abs(Math.round(netMonthly??surplus)).toLocaleString()}</div>
-      <div class="sp-surplus-label">${(netMonthly??surplus) >= 0 ? 'Monthly Surplus' : 'Monthly Deficit'}</div>
+      <div class="sp-surplus-big ${net >= 0 ? 'positive' : 'negative'}">${net >= 0 ? '' : '−'}$${Math.abs(Math.round(net)).toLocaleString()}</div>
+      <div class="sp-surplus-label">${net >= 0 ? 'Monthly Surplus' : 'Monthly Deficit'}</div>
 
       ${roiMonthly > 0 ? `
       <div class="sp-section">
