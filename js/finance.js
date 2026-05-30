@@ -553,7 +553,7 @@ function _renderAffordabilityTable(f, isAnnual) {
 
       <div class="afford-net ${net >= 0 ? 'positive' : 'negative'}" id="afford-net-row">
         <span>Net Monthly Position</span>
-        <span id="afford-net-val">${net >= 0 ? '+' : ''}$${Math.round(net).toLocaleString()}<span style="font-size:13px;font-weight:500;margin-left:4px">${net >= 0 ? 'surplus' : 'deficit'}</span></span>
+        <span id="afford-net-val">${net >= 0 ? '+' : '−'}$${Math.abs(Math.round(net)).toLocaleString()}<span style="font-size:13px;font-weight:500;margin-left:4px">${net >= 0 ? 'surplus' : 'deficit'}</span></span>
       </div>
     </div>`;
 }
@@ -759,7 +759,7 @@ function _updateHomeLivePreview() {
   setEl('afford-gross-val',   grossIncome > 0 ? `$${grossIncome.toLocaleString()}<span class="afford-unit">/mo</span>` : '—');
   setEl('afford-loan-total',  loanRepayments > 0 ? `−$${loanRepayments.toLocaleString()}<span class="afford-unit">/mo</span>` : '—');
   setEl('afford-exp-total',   `−$${(d.expHomeLoan+d.expJoint+d.expMitch+d.expSam).toLocaleString()}<span class="afford-unit">${unit}</span>`);
-  setEl('afford-net-val',     `${netPos>=0?'+':''}$${Math.round(netPos).toLocaleString()}<span style="font-size:13px;font-weight:500;margin-left:4px">${netPos>=0?'surplus':'deficit'}</span>`);
+  setEl('afford-net-val',     `${netPos>=0?'+':'−'}$${Math.abs(Math.round(netPos)).toLocaleString()}<span style="font-size:13px;font-weight:500;margin-left:4px">${netPos>=0?'surplus':'deficit'}</span>`);
   const netRow = document.getElementById('afford-net-row');
   if (netRow) { netRow.className = 'afford-net ' + (netPos >= 0 ? 'positive' : 'negative'); }
 
