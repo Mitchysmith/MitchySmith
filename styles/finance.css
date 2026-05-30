@@ -711,6 +711,18 @@
   margin-top: 6px;
 }
 
+/* Net income label above the big number */
+.sp-net-label {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-top: 10px;
+  margin-bottom: 2px;
+}
+
 /* Big surplus number */
 .sp-surplus-big {
   font-size: 38px;

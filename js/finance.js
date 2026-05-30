@@ -832,7 +832,16 @@ function _buildHomePlanSummaryHTML(d) {
           mitchIncome, samIncome, expHomeLoan, expJoint, expMitch, expSam,
           investments, roiRate, propGrowthRate, loans, netMonthly,
           loanRepayments, totalStrata, totalRental } = d;
-  const net          = totalIncome - totalExpenses;
+
+  // Recompute net from raw values to guarantee correctness
+  const _loanReps   = (loans||[]).filter(l=>l.balance&&l.rate&&l.term)
+                        .reduce((s,l) => s + Math.round(calcRepayment(l.balance, l.rate, l.term)), 0);
+  const _strata     = (loans||[]).reduce((s,l) => s + (l.strata||0), 0);
+  const _rental     = (loans||[]).reduce((s,l) => s + (l.rentalIncome||0), 0);
+  const _grossIn    = (mitchIncome||0) + (samIncome||0) + _rental;
+  const _grossOut   = (expHomeLoan||0) + (expJoint||0) + (expMitch||0) + (expSam||0) + _loanReps + _strata;
+  const net         = _grossIn - _grossOut;
+
   const totalMonthly = Math.max(0, net) + (roiMonthly || 0);
   const remaining    = Math.max(0, target - currentSavings);
   const pct          = target > 0 ? Math.min(100, Math.round(currentSavings / target * 100)) : 0;
@@ -861,14 +870,13 @@ function _buildHomePlanSummaryHTML(d) {
     timelineHtml = `<div class="hp-timeline-box hp-tl-done"><div class="hp-tl-label">🏆 Goal reached! Ready to buy.</div></div>`;
   }
 
-  const outgoings      = totalExpenses;
-  const mortgageTotal  = loanRepayments + totalStrata;
+  const mortgageTotal  = _loanReps + _strata;
   const expensesTotal  = (expHomeLoan||0) + (expJoint||0) + (expMitch||0) + (expSam||0);
-  const maxBar         = Math.max(totalIncome, outgoings, 1);
-  const incomeBarW     = Math.round(totalIncome / maxBar * 100);
-  const outBarW        = Math.round(outgoings   / maxBar * 100);
-  const mortPct        = outgoings > 0 ? Math.round(mortgageTotal / outgoings * 100) : 0;
-  const expPct         = outgoings > 0 ? Math.round(expensesTotal / outgoings * 100) : 0;
+  const maxBar         = Math.max(_grossIn, _grossOut, 1);
+  const incomeBarW     = Math.round(_grossIn  / maxBar * 100);
+  const outBarW        = Math.round(_grossOut / maxBar * 100);
+  const mortPct        = _grossOut > 0 ? Math.round(mortgageTotal / _grossOut * 100) : 0;
+  const expPct         = _grossOut > 0 ? Math.round(expensesTotal / _grossOut * 100) : 0;
 
   return `
     <div class="summary-panel">
@@ -878,12 +886,12 @@ function _buildHomePlanSummaryHTML(d) {
         <div class="sp-cmp-row">
           <span class="sp-cmp-label">Income</span>
           <div class="sp-cmp-track"><div class="sp-cmp-fill income-fill" style="width:${incomeBarW}%"></div></div>
-          <span class="sp-cmp-val income-val">$${totalIncome.toLocaleString()}</span>
+          <span class="sp-cmp-val income-val">$${_grossIn.toLocaleString()}</span>
         </div>
         <div class="sp-cmp-row">
           <span class="sp-cmp-label">Outgoings</span>
           <div class="sp-cmp-track"><div class="sp-cmp-fill expense-fill" style="width:${outBarW}%"></div></div>
-          <span class="sp-cmp-val expense-val">$${outgoings.toLocaleString()}</span>
+          <span class="sp-cmp-val expense-val">$${_grossOut.toLocaleString()}</span>
         </div>
       </div>
 
@@ -924,8 +932,9 @@ function _buildHomePlanSummaryHTML(d) {
         <div class="sp-total-row"><span>Total expenses</span><span style="color:var(--orange)">−$${totalExpenses.toLocaleString()}/mo</span></div>
       </div>
 
-      <div class="sp-surplus-big ${net >= 0 ? 'positive' : 'negative'}">${net >= 0 ? '' : '−'}$${Math.abs(Math.round(net)).toLocaleString()}</div>
-      <div class="sp-surplus-label">${net >= 0 ? 'Monthly Surplus' : 'Monthly Deficit'}</div>
+      <div class="sp-net-label">Net Monthly Income</div>
+      <div class="sp-surplus-big ${net >= 0 ? 'positive' : 'negative'}">${net >= 0 ? '+' : '−'}$${Math.abs(Math.round(net)).toLocaleString()}</div>
+      <div class="sp-surplus-label">${net >= 0 ? 'surplus — you\'re ahead' : 'deficit — outgoings exceed income'}</div>
 
       ${roiMonthly > 0 ? `
       <div class="sp-section">
