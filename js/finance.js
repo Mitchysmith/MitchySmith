@@ -823,13 +823,14 @@ function _updateHomeLivePreview() {
   if (summaryEl) summaryEl.innerHTML = _buildHomePlanSummaryHTML({
     ...d, totalIncome, totalExpenses, surplus, roiMonthly, target, sim,
     currentSavings: d.savings, loanRepayments, totalStrata, totalRental,
+    netMonthly: totalIncome - totalExpenses,
   });
 }
 
 function _buildHomePlanSummaryHTML(d) {
   const { totalIncome, totalExpenses, surplus, roiMonthly, target, sim, currentSavings,
           mitchIncome, samIncome, expHomeLoan, expJoint, expMitch, expSam,
-          investments, roiRate, propGrowthRate, loans,
+          investments, roiRate, propGrowthRate, loans, netMonthly,
           loanRepayments, totalStrata, totalRental } = d;
   const totalMonthly = surplus + (roiMonthly || 0);
   const remaining    = Math.max(0, target - currentSavings);
@@ -922,8 +923,8 @@ function _buildHomePlanSummaryHTML(d) {
         <div class="sp-total-row"><span>Total expenses</span><span style="color:var(--orange)">−$${totalExpenses.toLocaleString()}/mo</span></div>
       </div>
 
-      <div class="sp-surplus-big ${surplus >= 0 ? 'positive' : 'negative'}">$${surplus.toLocaleString()}</div>
-      <div class="sp-surplus-label">Monthly Surplus</div>
+      <div class="sp-surplus-big ${(netMonthly??surplus) >= 0 ? 'positive' : 'negative'}">${(netMonthly??surplus) >= 0 ? '' : '−'}$${Math.abs(Math.round(netMonthly??surplus)).toLocaleString()}</div>
+      <div class="sp-surplus-label">${(netMonthly??surplus) >= 0 ? 'Monthly Surplus' : 'Monthly Deficit'}</div>
 
       ${roiMonthly > 0 ? `
       <div class="sp-section">
