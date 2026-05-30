@@ -917,3 +917,231 @@
              celebratePulse 0.7s 0.5s ease-out,
              celebratePulse 0.7s 1.4s ease-out;
 }
+
+/* ── Affordability Table ── */
+.afford-card { padding: 20px 22px; }
+
+.afford-group {
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.afford-group:last-of-type { border-bottom: none; }
+
+.afford-group-hdr {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 0 6px;
+}
+.income-hdr  { color: var(--green);  }
+.expense-hdr { color: var(--orange); }
+
+.afford-row {
+  display: grid;
+  grid-template-columns: 1fr 140px 130px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.afford-row:last-of-type { border-bottom: none; }
+.afford-readonly-row input { display: none; }
+
+.afford-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.afford-input {
+  width: 100%;
+  font-size: 13px;
+  padding: 6px 10px;
+  text-align: right;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  transition: border-color var(--transition);
+}
+.afford-input:focus { border-color: var(--orange); box-shadow: 0 0 0 2px var(--orange-glow); }
+
+.afford-value {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+.income-val  { color: var(--green);  }
+.expense-val { color: var(--orange); }
+.afford-unit { font-size: 10px; font-weight: 400; color: var(--text-dim); margin-left: 2px; }
+
+.afford-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.afford-gross-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  border-top: 2px solid var(--border);
+  margin-top: 4px;
+}
+.afford-gross-row #afford-gross-val { color: var(--green); font-size: 16px; }
+
+/* Loan rows inside the table */
+.afford-loan-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+.afford-loan-label {
+  width: 100%;
+  max-width: 180px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 8px;
+  flex-shrink: 0;
+}
+.afford-loan-fields {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.afford-loan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 80px;
+}
+.alf-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-dim);
+}
+.afford-loan-input {
+  font-size: 12px;
+  padding: 5px 8px;
+  text-align: right;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  width: 100%;
+}
+.afford-loan-input:focus { outline: none; border-color: var(--orange); }
+
+.afford-loan-calc {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 100px;
+  gap: 3px;
+}
+.alc-rep   { font-size: 13px; font-weight: 700; color: var(--orange); }
+.alc-net   { font-size: 11px; font-weight: 600; }
+.alc-net.expense { color: var(--orange); }
+.alc-net.income  { color: var(--green);  }
+.alc-empty { font-size: 11px; color: var(--text-dim); }
+
+/* Net position row */
+.afford-net {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.afford-net.positive { background: var(--green-glow);  color: var(--green);  border: 1px solid rgba(76,175,120,0.3); }
+.afford-net.negative { background: var(--orange-glow); color: var(--orange); border: 1px solid rgba(255,119,48,0.3); }
+
+/* ── Summary Panel Comparison Bars ── */
+.sp-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sp-cmp-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 72px;
+  align-items: center;
+  gap: 8px;
+}
+.sp-cmp-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.sp-cmp-track {
+  background: var(--surface-3);
+  border-radius: 99px;
+  height: 8px;
+  overflow: hidden;
+}
+.sp-cmp-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+.income-fill  { background: var(--green);  }
+.expense-fill { background: var(--orange); }
+.sp-cmp-val {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* Outgoings breakdown */
+.sp-bk-block {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sp-bk-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.sp-bk-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.sp-bk-bar {
+  height: 6px;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.mortgage-bar { background: var(--blue);   }
+.expense-bar  { background: var(--orange); }
+.sp-bk-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.sp-bk-right { font-size: 11px; color: var(--text-dim); text-align: right; white-space: nowrap; }
+.sp-bk-pct   { font-weight: 700; color: var(--text-muted); }

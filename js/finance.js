@@ -413,6 +413,151 @@ function launchConfetti() {
 // HOME PLANNING TAB
 // ─────────────────────────────────────────────────────────
 
+function _renderAffordabilityTable(f, isAnnual) {
+  const show  = v => isAnnual ? (Math.round((v||0)*12) || '') : ((v||0) || '');
+  const fmt   = v => v > 0 ? '$' + Math.round(v).toLocaleString() : '—';
+  const unit  = isAnnual ? '/yr' : '/mo';
+
+  const mitchIncome = f.mitchIncome || 0;
+  const samIncome   = f.samIncome   || 0;
+  const empIncome   = mitchIncome + samIncome;
+  const loanRental  = (f.loans||[]).reduce((s,l) => s + (l.rentalIncome||0), 0);
+  const grossIncome = empIncome + loanRental;
+  const loanRep     = (f.loans||[]).reduce((s,l) => l.balance&&l.rate&&l.term ? s+Math.round(calcRepayment(l.balance,l.rate,l.term)) : s, 0);
+  const loanStrata  = (f.loans||[]).reduce((s,l) => s + (l.strata||0), 0);
+  const totalExp    = (f.expHomeLoan||0) + (f.expJoint||0) + (f.expMitch||0) + (f.expSam||0);
+  const totalOut    = loanRep + loanStrata + totalExp;
+  const net         = grossIncome - totalOut;
+
+  const loanRows = (f.loans||[]).map(loan => {
+    const rep     = loan.balance && loan.rate && loan.term ? Math.round(calcRepayment(loan.balance, loan.rate, loan.term)) : 0;
+    const netCost = rep + (loan.strata||0) - (loan.rentalIncome||0);
+    return `
+      <div class="afford-loan-row">
+        <input class="loan-label-input afford-loan-label" data-id="${loan.id}" data-field="label"
+               value="${loan.label||''}" placeholder="Property or loan name" />
+        <div class="afford-loan-fields">
+          <div class="afford-loan-field">
+            <span class="alf-label">Balance $</span>
+            <input type="number" class="loan-field afford-loan-input" data-id="${loan.id}" data-field="balance"
+                   value="${loan.balance||''}" placeholder="500000" />
+          </div>
+          <div class="afford-loan-field">
+            <span class="alf-label">Rate %</span>
+            <input type="number" class="loan-field afford-loan-input" step="0.1" data-id="${loan.id}" data-field="rate"
+                   value="${loan.rate||6.2}" />
+          </div>
+          <div class="afford-loan-field">
+            <span class="alf-label">Years</span>
+            <input type="number" class="loan-field afford-loan-input" data-id="${loan.id}" data-field="term"
+                   value="${loan.term||30}" />
+          </div>
+          <div class="afford-loan-field">
+            <span class="alf-label" style="color:var(--green)">Rental /mo</span>
+            <input type="number" class="loan-field afford-loan-input" data-id="${loan.id}" data-field="rentalIncome"
+                   value="${show(loan.rentalIncome)||''}" placeholder="0" />
+          </div>
+          <div class="afford-loan-field">
+            <span class="alf-label" style="color:var(--orange)">Strata /mo</span>
+            <input type="number" class="loan-field afford-loan-input" data-id="${loan.id}" data-field="strata"
+                   value="${show(loan.strata)||''}" placeholder="0" />
+          </div>
+        </div>
+        <div class="afford-loan-calc">
+          ${rep > 0 ? `<span class="alc-rep">$${rep.toLocaleString()}/mo</span>
+          <span class="alc-net ${netCost >= 0 ? 'expense' : 'income'}">net $${Math.abs(netCost).toLocaleString()}/mo ${netCost<0?'surplus':''}</span>`
+          : '<span class="alc-empty">enter fields →</span>'}
+        </div>
+        <button class="loan-delete-btn" data-id="${loan.id}" title="Remove loan">×</button>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="card afford-card" style="margin-bottom:14px">
+      <div class="hp-section-title">📊 Affordability</div>
+
+      <div class="afford-group">
+        <div class="afford-group-hdr income-hdr">Income</div>
+        <div class="afford-row">
+          <span class="afford-label">Mitch's take-home</span>
+          <input type="number" id="hp-mitch-income" class="afford-input" value="${show(mitchIncome)}" placeholder="${isAnnual?'120000':'10000'}" />
+          <span class="afford-value income-val" id="afford-mitch-val">${mitchIncome ? fmt(mitchIncome) : '—'}<span class="afford-unit">${unit}</span></span>
+        </div>
+        <div class="afford-row">
+          <span class="afford-label">Sam's take-home</span>
+          <input type="number" id="hp-sam-income" class="afford-input" value="${show(samIncome)}" placeholder="${isAnnual?'80000':'6500'}" />
+          <span class="afford-value income-val" id="afford-sam-val">${samIncome ? fmt(samIncome) : '—'}<span class="afford-unit">${unit}</span></span>
+        </div>
+        <div class="afford-total-row">
+          <span>Total Employment Income</span>
+          <span class="income-val" id="afford-emp-total">${empIncome ? '$'+empIncome.toLocaleString() : '—'}<span class="afford-unit">${unit}</span></span>
+        </div>
+      </div>
+
+      <div class="afford-group">
+        <div class="afford-group-hdr income-hdr">Rental Income</div>
+        ${(f.loans||[]).filter(l => l.rentalIncome > 0).map(l => `
+          <div class="afford-row afford-readonly-row">
+            <span class="afford-label">${l.label || 'Investment property'}</span>
+            <span></span>
+            <span class="afford-value income-val">$${(l.rentalIncome||0).toLocaleString()}<span class="afford-unit">/mo</span></span>
+          </div>`).join('') || `<div class="afford-row afford-readonly-row" style="color:var(--text-dim);font-size:12px"><span class="afford-label">No rental income — add loans below with rental income set</span></div>`}
+        <div class="afford-total-row">
+          <span>Total Rental Income</span>
+          <span class="income-val" id="afford-rental-total">${loanRental ? '$'+loanRental.toLocaleString() : '—'}<span class="afford-unit">/mo</span></span>
+        </div>
+        <div class="afford-gross-row">
+          <span>Gross Monthly Income</span>
+          <span id="afford-gross-val">$${grossIncome.toLocaleString()}<span class="afford-unit">/mo</span></span>
+        </div>
+      </div>
+
+      <div class="afford-group">
+        <div class="afford-group-hdr expense-hdr">Mortgages &amp; Loans</div>
+        ${loanRows || '<div style="font-size:12px;color:var(--text-dim);padding:8px 0">No loans added. Click below to add one.</div>'}
+        <button class="btn add-loan-btn" id="add-loan-btn" style="margin:10px 0 6px">+ Add Loan</button>
+        ${loanRep > 0 ? `<div class="afford-total-row">
+          <span>Total Repayments</span>
+          <span class="expense-val" id="afford-loan-total">−$${loanRep.toLocaleString()}<span class="afford-unit">/mo</span></span>
+        </div>` : `<div class="afford-total-row"><span>Total Repayments</span><span class="expense-val" id="afford-loan-total">—</span></div>`}
+        ${loanStrata > 0 ? `<div class="afford-row afford-readonly-row"><span class="afford-label">Strata / body corp (total)</span><span></span><span class="afford-value expense-val">−$${loanStrata.toLocaleString()}<span class="afford-unit">/mo</span></span></div>` : ''}
+      </div>
+
+      <div class="afford-group">
+        <div class="afford-group-hdr expense-hdr">Expenses</div>
+        <div class="afford-row">
+          <span class="afford-label">Rent / current housing</span>
+          <input type="number" id="hp-exp-homeloan" class="afford-input" value="${show(f.expHomeLoan)}" placeholder="${isAnnual?'48000':'4000'}" />
+          <span class="afford-value expense-val">${f.expHomeLoan ? '−$'+Math.round(f.expHomeLoan).toLocaleString() : '—'}<span class="afford-unit">${unit}</span></span>
+        </div>
+        <div class="afford-row">
+          <span class="afford-label">Joint — food, bills, subscriptions</span>
+          <input type="number" id="hp-exp-joint" class="afford-input" value="${show(f.expJoint)}" placeholder="${isAnnual?'36000':'3000'}" />
+          <span class="afford-value expense-val">${f.expJoint ? '−$'+Math.round(f.expJoint).toLocaleString() : '—'}<span class="afford-unit">${unit}</span></span>
+        </div>
+        <div class="afford-row">
+          <span class="afford-label">Mitch's personal expenses</span>
+          <input type="number" id="hp-exp-mitch" class="afford-input" value="${show(f.expMitch)}" placeholder="${isAnnual?'12000':'1000'}" />
+          <span class="afford-value expense-val">${f.expMitch ? '−$'+Math.round(f.expMitch).toLocaleString() : '—'}<span class="afford-unit">${unit}</span></span>
+        </div>
+        <div class="afford-row">
+          <span class="afford-label">Sam's personal expenses</span>
+          <input type="number" id="hp-exp-sam" class="afford-input" value="${show(f.expSam)}" placeholder="${isAnnual?'12000':'1000'}" />
+          <span class="afford-value expense-val">${f.expSam ? '−$'+Math.round(f.expSam).toLocaleString() : '—'}<span class="afford-unit">${unit}</span></span>
+        </div>
+        <div class="afford-total-row">
+          <span>Total Expenses</span>
+          <span class="expense-val" id="afford-exp-total">−$${totalExp.toLocaleString()}<span class="afford-unit">${unit}</span></span>
+        </div>
+      </div>
+
+      <div class="afford-net ${net >= 0 ? 'positive' : 'negative'}" id="afford-net-row">
+        <span>Net Monthly Position</span>
+        <span id="afford-net-val">${net >= 0 ? '+' : ''}$${Math.round(net).toLocaleString()}<span style="font-size:13px;font-weight:500;margin-left:4px">${net >= 0 ? 'surplus' : 'deficit'}</span></span>
+      </div>
+    </div>`;
+}
+
 function renderHomePlanningPanel() {
   const el = document.getElementById('fin-homeplan');
   if (!el) return;
@@ -435,19 +580,7 @@ function renderHomePlanningPanel() {
           <button class="imt-btn ${isAnnual?'active':''}"  data-mode="annual">Annual</button>
         </div>
 
-        <div class="card" style="margin-bottom:14px">
-          <div class="hp-section-title">💵 Income</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Mitch's take-home (${isAnnual?'annual':'monthly'})</label>
-              <input type="number" id="hp-mitch-income" value="${show(f.mitchIncome)}" placeholder="${isAnnual?'120000':'10000'}" />
-            </div>
-            <div class="form-group">
-              <label>Sam's take-home (${isAnnual?'annual':'monthly'})</label>
-              <input type="number" id="hp-sam-income" value="${show(f.samIncome)}" placeholder="${isAnnual?'80000':'6500'}" />
-            </div>
-          </div>
-        </div>
+        ${_renderAffordabilityTable(f, isAnnual)}
 
         <div class="card" style="margin-bottom:14px">
           <div class="hp-section-title">💰 Savings & Investments</div>
@@ -467,36 +600,6 @@ function renderHomePlanningPanel() {
               <input type="number" id="hp-roi" step="0.5" value="${f.roiRate||5.5}" />
             </div>
           </div>
-        </div>
-
-        <div class="card" style="margin-bottom:14px">
-          <div class="hp-section-title">💸 Expenses</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Rent / other housing costs (${isAnnual?'annual':'monthly'})</label>
-              <input type="number" id="hp-exp-homeloan" value="${show(f.expHomeLoan)}" placeholder="${isAnnual?'48000':'4000'}" />
-            </div>
-            <div class="form-group">
-              <label>Joint expenses — food, bills, subs (${isAnnual?'annual':'monthly'})</label>
-              <input type="number" id="hp-exp-joint" value="${show(f.expJoint)}" placeholder="${isAnnual?'36000':'3000'}" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Mitch's personal expenses (${isAnnual?'annual':'monthly'})</label>
-              <input type="number" id="hp-exp-mitch" value="${show(f.expMitch)}" placeholder="${isAnnual?'12000':'1000'}" />
-            </div>
-            <div class="form-group">
-              <label>Sam's personal expenses (${isAnnual?'annual':'monthly'})</label>
-              <input type="number" id="hp-exp-sam" value="${show(f.expSam)}" placeholder="${isAnnual?'12000':'1000'}" />
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom:14px">
-          <div class="hp-section-title">🏦 Existing Loans</div>
-          <p style="font-size:12px;color:var(--text-muted);margin:-4px 0 14px">Add any current home loans or investment property loans. Repayments are calculated automatically — rental income and strata costs offset each other in your cash flow.</p>
-          ${_renderLoansSection(f.loans, isAnnual)}
         </div>
 
         <div class="card" style="margin-bottom:14px">
@@ -644,6 +747,22 @@ function _updateHomeLivePreview() {
   const roiMonthly    = Math.round((d.investments * d.roiRate / 100) / 12);
   const target        = calcTotalCashNeeded(d);
 
+  // Live-update affordability table totals
+  const grossIncome = d.mitchIncome + d.samIncome + totalRental;
+  const totalOut    = loanRepayments + totalStrata + d.expHomeLoan + d.expJoint + d.expMitch + d.expSam;
+  const netPos      = grossIncome - totalOut;
+
+  const setEl = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
+  const unit  = window.state.finance.inputMode === 'annual' ? '/yr' : '/mo';
+  setEl('afford-emp-total',   grossIncome > 0 ? `$${(d.mitchIncome+d.samIncome).toLocaleString()}<span class="afford-unit">${unit}</span>` : '—');
+  setEl('afford-rental-total', totalRental > 0 ? `$${totalRental.toLocaleString()}<span class="afford-unit">/mo</span>` : '—');
+  setEl('afford-gross-val',   grossIncome > 0 ? `$${grossIncome.toLocaleString()}<span class="afford-unit">/mo</span>` : '—');
+  setEl('afford-loan-total',  loanRepayments > 0 ? `−$${loanRepayments.toLocaleString()}<span class="afford-unit">/mo</span>` : '—');
+  setEl('afford-exp-total',   `−$${(d.expHomeLoan+d.expJoint+d.expMitch+d.expSam).toLocaleString()}<span class="afford-unit">${unit}</span>`);
+  setEl('afford-net-val',     `${netPos>=0?'+':''}$${Math.round(netPos).toLocaleString()}<span style="font-size:13px;font-weight:500;margin-left:4px">${netPos>=0?'surplus':'deficit'}</span>`);
+  const netRow = document.getElementById('afford-net-row');
+  if (netRow) { netRow.className = 'afford-net ' + (netPos >= 0 ? 'positive' : 'negative'); }
+
   // Cost breakdown panel
   if (d.propPrice > 0) {
     const deposit = Math.round(d.propPrice * d.propDepositPct / 100);
@@ -740,9 +859,48 @@ function _buildHomePlanSummaryHTML(d) {
     timelineHtml = `<div class="hp-timeline-box hp-tl-done"><div class="hp-tl-label">🏆 Goal reached! Ready to buy.</div></div>`;
   }
 
+  const outgoings      = totalExpenses;
+  const mortgageTotal  = loanRepayments + totalStrata;
+  const expensesTotal  = (expHomeLoan||0) + (expJoint||0) + (expMitch||0) + (expSam||0);
+  const maxBar         = Math.max(totalIncome, outgoings, 1);
+  const incomeBarW     = Math.round(totalIncome / maxBar * 100);
+  const outBarW        = Math.round(outgoings   / maxBar * 100);
+  const mortPct        = outgoings > 0 ? Math.round(mortgageTotal / outgoings * 100) : 0;
+  const expPct         = outgoings > 0 ? Math.round(expensesTotal / outgoings * 100) : 0;
+
   return `
     <div class="summary-panel">
       <div class="summary-panel-title">Monthly Summary</div>
+
+      <div class="sp-compare">
+        <div class="sp-cmp-row">
+          <span class="sp-cmp-label">Income</span>
+          <div class="sp-cmp-track"><div class="sp-cmp-fill income-fill" style="width:${incomeBarW}%"></div></div>
+          <span class="sp-cmp-val income-val">$${totalIncome.toLocaleString()}</span>
+        </div>
+        <div class="sp-cmp-row">
+          <span class="sp-cmp-label">Outgoings</span>
+          <div class="sp-cmp-track"><div class="sp-cmp-fill expense-fill" style="width:${outBarW}%"></div></div>
+          <span class="sp-cmp-val expense-val">$${outgoings.toLocaleString()}</span>
+        </div>
+      </div>
+
+      ${(mortgageTotal > 0 || expensesTotal > 0) ? `
+      <div class="sp-bk-block">
+        <div class="sp-bk-title">Outgoings breakdown</div>
+        ${mortgageTotal > 0 ? `
+        <div class="sp-bk-row">
+          <div class="sp-bk-bar mortgage-bar" style="width:${mortPct}%"></div>
+          <span class="sp-bk-label">Mortgages</span>
+          <span class="sp-bk-right"><span class="sp-bk-pct">${mortPct}%</span> · $${mortgageTotal.toLocaleString()}</span>
+        </div>` : ''}
+        ${expensesTotal > 0 ? `
+        <div class="sp-bk-row">
+          <div class="sp-bk-bar expense-bar" style="width:${expPct}%"></div>
+          <span class="sp-bk-label">Expenses</span>
+          <span class="sp-bk-right"><span class="sp-bk-pct">${expPct}%</span> · $${expensesTotal.toLocaleString()}</span>
+        </div>` : ''}
+      </div>` : ''}
 
       <div class="sp-section">
         <div class="sp-row"><span class="sp-row-label">Mitch's income</span><span class="sp-row-val" style="color:var(--green)">$${(mitchIncome||0).toLocaleString()}</span></div>
